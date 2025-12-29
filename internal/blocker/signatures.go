@@ -72,8 +72,11 @@ var BTSignatures = [][]byte{
 	// 6. DHT Bencode Keys (from suricata)
 	[]byte("d1:ad2:id20:"),
 	[]byte("d1:rd2:id20:"),
+	[]byte("d2:ip"),  // DHT IP field (Suricata)
+	[]byte("d1:el"),  // DHT error list (Suricata)
 	[]byte("1:y1:q"), // Query Type
 	[]byte("1:y1:r"), // Response Type
+	[]byte("1:y1:e"), // Error Type (Suricata)
 	[]byte("find_node"),
 	[]byte("4:ping"),
 	[]byte("9:get_peers"),
@@ -83,6 +86,8 @@ var BTSignatures = [][]byte{
 	[]byte("5:token"),
 	[]byte("6:nodes6"),
 	[]byte("6:target"),
+	[]byte("6:nodes"),  // IPv4 nodes list
+	[]byte("6:values"), // Values list
 
 	// 7. LSD (Local Service Discovery)
 	[]byte("BT-SEARCH * HTTP/1.1"),

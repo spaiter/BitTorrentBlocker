@@ -133,7 +133,64 @@ func CheckUTPRobust(packet []byte) bool {
 	return true
 }
 
+// CheckDHTNodes validates DHT node list binary structure (Suricata logic)
+// IPv4 nodes: 26 bytes per node (20-byte ID + 4-byte IP + 2-byte port)
+// IPv6 nodes: 38 bytes per node (20-byte ID + 16-byte IP + 2-byte port)
+func CheckDHTNodes(payload []byte) bool {
+	// Look for "6:nodes" or "7:nodes6" followed by length and binary data
+	// Format: "6:nodes<length>:<binary_data>"
+
+	// Check for IPv4 nodes list: "6:nodes<len>:<data>"
+	nodesIdx := bytes.Index(payload, []byte("6:nodes"))
+	if nodesIdx != -1 && nodesIdx+7 < len(payload) {
+		// Skip "6:nodes" and parse the length
+		offset := nodesIdx + 7
+		// Find the colon that separates length from data
+		colonIdx := bytes.IndexByte(payload[offset:], ':')
+		if colonIdx != -1 && colonIdx > 0 && colonIdx < 10 {
+			// Extract and parse the length
+			lengthStr := string(payload[offset : offset+colonIdx])
+			// Simple length parsing (assume it's a valid number)
+			nodeDataLen := 0
+			for _, ch := range lengthStr {
+				if ch >= '0' && ch <= '9' {
+					nodeDataLen = nodeDataLen*10 + int(ch-'0')
+				}
+			}
+			// Check if it's divisible by 26 (IPv4 node size)
+			if nodeDataLen >= 26 && nodeDataLen%26 == 0 {
+				return true
+			}
+		}
+	}
+
+	// Check for IPv6 nodes list: "7:nodes6<len>:<data>"
+	nodes6Idx := bytes.Index(payload, []byte("7:nodes6"))
+	if nodes6Idx != -1 && nodes6Idx+8 < len(payload) {
+		offset := nodes6Idx + 8
+		colonIdx := bytes.IndexByte(payload[offset:], ':')
+		if colonIdx != -1 && colonIdx > 0 && colonIdx < 10 {
+			lengthStr := string(payload[offset : offset+colonIdx])
+			nodeDataLen := 0
+			for _, ch := range lengthStr {
+				if ch >= '0' && ch <= '9' {
+					nodeDataLen = nodeDataLen*10 + int(ch-'0')
+				}
+			}
+			// Check if it's divisible by 38 (IPv6 node size)
+			if nodeDataLen >= 38 && nodeDataLen%38 == 0 {
+				return true
+			}
+		}
+	}
+
+	// Only return true if we have valid structure or valid pattern match
+	// Don't be too permissive - require proper bencode context
+	return false
+}
+
 // CheckBencodeDHT looks for structural Bencode dictionary patterns
+// Enhanced with Suricata-style validation
 func CheckBencodeDHT(payload []byte) bool {
 	if len(payload) < 8 {
 		return false
@@ -144,15 +201,36 @@ func CheckBencodeDHT(payload []byte) bool {
 	}
 
 	s := string(payload)
-	// Must contain query type (y) AND (transaction t OR specific keys)
-	hasType := strings.Contains(s, "1:y1:q") || strings.Contains(s, "1:y1:r")
+
+	// Check for Suricata-specific prefixes at start
+	if bytes.HasPrefix(payload, []byte("d1:ad")) ||
+		bytes.HasPrefix(payload, []byte("d1:rd")) ||
+		bytes.HasPrefix(payload, []byte("d2:ip")) ||
+		bytes.HasPrefix(payload, []byte("d1:el")) {
+		return true
+	}
+
+	// Must contain query/response/error type
+	hasType := strings.Contains(s, "1:y1:q") ||
+		strings.Contains(s, "1:y1:r") ||
+		strings.Contains(s, "1:y1:e")
 	if !hasType {
 		return false
 	}
 
-	return strings.Contains(s, "1:t") ||
-		strings.Contains(s, "5:nodes") ||
-		strings.Contains(s, "6:values")
+	// Check for transaction ID or DHT-specific fields
+	if strings.Contains(s, "1:t") {
+		return true
+	}
+
+	// Check for DHT node validation
+	if CheckDHTNodes(payload) {
+		return true
+	}
+
+	// Check for values list or token
+	return strings.Contains(s, "6:values") ||
+		strings.Contains(s, "5:token")
 }
 
 // ShannonEntropy calculates data randomness/entropy

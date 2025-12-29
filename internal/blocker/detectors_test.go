@@ -324,6 +324,160 @@ func TestCheckBencodeDHT(t *testing.T) {
 	}
 }
 
+func TestCheckBencodeDHT_SuricataEnhancements(t *testing.T) {
+	tests := []struct {
+		name     string
+		payload  []byte
+		expected bool
+	}{
+		// Suricata-specific prefix tests
+		{
+			name:     "Suricata d1:ad prefix",
+			payload:  []byte("d1:ad2:id20:12345678901234567890e1:q4:ping1:t2:aa1:y1:qe"),
+			expected: true,
+		},
+		{
+			name:     "Suricata d1:rd prefix",
+			payload:  []byte("d1:rd2:id20:12345678901234567890e1:t2:aa1:y1:re"),
+			expected: true,
+		},
+		{
+			name:     "Suricata d2:ip prefix",
+			payload:  []byte("d2:ip6:1.2.3.41:t2:aa1:y1:qe"),
+			expected: true,
+		},
+		{
+			name:     "Suricata d1:el prefix (error list)",
+			payload:  []byte("d1:elli201e4:testee1:t2:aa1:y1:ee"),
+			expected: true,
+		},
+		{
+			name:     "DHT error type (1:y1:e)",
+			payload:  []byte("d1:eli201e4:teste1:t2:aa1:y1:ee"),
+			expected: true,
+		},
+
+		// Token and values tests
+		{
+			name:     "DHT with token",
+			payload:  []byte("d1:rd2:id20:123456789012345678905:token8:abcdefghe1:t2:aa1:y1:re"),
+			expected: true,
+		},
+		{
+			name:     "DHT with values list",
+			payload:  []byte("d1:rd2:id20:123456789012345678906:valuesl6:peer016:peer02ee1:t2:aa1:y1:re"),
+			expected: true,
+		},
+
+		// Negative tests
+		{
+			name:     "No type field",
+			payload:  []byte("d1:t2:aa2:id20:12345678901234567890e"),
+			expected: false,
+		},
+		{
+			name:     "Wrong prefix d3:ab",
+			payload:  []byte("d3:abc4:teste"),
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := CheckBencodeDHT(tt.payload)
+			if result != tt.expected {
+				t.Errorf("CheckBencodeDHT() = %v, want %v", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestCheckDHTNodes(t *testing.T) {
+	tests := []struct {
+		name     string
+		payload  []byte
+		expected bool
+	}{
+		// IPv4 nodes tests (26 bytes per node)
+		{
+			name: "Valid IPv4 nodes - 1 node",
+			payload: func() []byte {
+				// Create bencode: d6:nodes26:<26 bytes>e
+				result := []byte("d6:nodes26:")
+				// 20-byte node ID
+				result = append(result, []byte("12345678901234567890")...)
+				// 4-byte IPv4
+				result = append(result, 192, 168, 1, 1)
+				// 2-byte port
+				result = append(result, 0x1A, 0xE1) // Port 6881
+				result = append(result, 'e')
+				return result
+			}(),
+			expected: true,
+		},
+		{
+			name: "Valid IPv4 nodes - 2 nodes",
+			payload: func() []byte {
+				result := []byte("d6:nodes52:")
+				// First node (26 bytes)
+				result = append(result, []byte("node1234567890123456")...)
+				result = append(result, 192, 168, 1, 1)
+				result = append(result, 0x1A, 0xE1)
+				// Second node (26 bytes)
+				result = append(result, []byte("node2234567890123456")...)
+				result = append(result, 192, 168, 1, 2)
+				result = append(result, 0x1A, 0xE2)
+				result = append(result, 'e')
+				return result
+			}(),
+			expected: true,
+		},
+
+		// IPv6 nodes tests (38 bytes per node)
+		{
+			name: "Valid IPv6 nodes - 1 node",
+			payload: func() []byte {
+				result := []byte("d7:nodes638:")
+				// 20-byte node ID
+				result = append(result, []byte("12345678901234567890")...)
+				// 16-byte IPv6
+				result = append(result, []byte("2001db800000000000000000000000001")[:16]...)
+				// 2-byte port
+				result = append(result, 0x1A, 0xE1)
+				result = append(result, 'e')
+				return result
+			}(),
+			expected: true,
+		},
+
+		// Negative tests
+		{
+			name:     "No nodes field",
+			payload:  []byte("d1:rd2:id20:12345678901234567890e1:t2:aa1:y1:re"),
+			expected: false,
+		},
+		{
+			name:     "Invalid node size (not divisible by 26)",
+			payload:  []byte("d6:nodes25:aaaaaaaaaaaaaaaaaaaaaaaaa1:t2:aae"),
+			expected: false,
+		},
+		{
+			name:     "Empty payload",
+			payload:  []byte{},
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := CheckDHTNodes(tt.payload)
+			if result != tt.expected {
+				t.Errorf("CheckDHTNodes() = %v, want %v", result, tt.expected)
+			}
+		})
+	}
+}
+
 func TestShannonEntropy(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -934,5 +1088,26 @@ func BenchmarkCheckHTTPBitTorrent(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		CheckHTTPBitTorrent(payload)
+	}
+}
+
+func BenchmarkCheckDHTNodes(b *testing.B) {
+	node := make([]byte, 26)
+	copy(node[0:20], []byte("12345678901234567890"))
+	node[20], node[21], node[22], node[23] = 192, 168, 1, 1
+	node[24], node[25] = 0x1A, 0xE1
+	payload := []byte("d6:nodes26:" + string(node) + "e")
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		CheckDHTNodes(payload)
+	}
+}
+
+func BenchmarkCheckBencodeDHT(b *testing.B) {
+	payload := []byte("d1:ad2:id20:abcdefghij0123456789e1:q4:ping1:t2:aa1:y1:qe")
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		CheckBencodeDHT(payload)
 	}
 }

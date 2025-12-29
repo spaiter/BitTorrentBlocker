@@ -18,7 +18,7 @@ A high-performance Go library and CLI tool for detecting and blocking BitTorrent
   - uTP (Micro Transport Protocol/BEP 29)
   - BitTorrent v2 support
   - Encrypted/obfuscated traffic via entropy analysis
-- **Extensive Signature Database**: 88+ protocol signatures, 60+ client identifiers
+- **Extensive Signature Database**: 95+ protocol signatures, 60+ client identifiers
 - **SOCKS5 Unwrapping**: Detects BitTorrent traffic tunneled through SOCKS proxies
 - **Automatic IP Banning**: Integrates with Linux ipset for persistent blocking
 - **Whitelist Support**: Excludes common ports (HTTP, HTTPS, SSH, DNS)
@@ -137,7 +137,7 @@ The blocker employs 11 complementary detection techniques, ordered by specificit
    - **Bitcomet Persistent Seed** - Proprietary HTTP protocol
    - **User-Agent Detection** - Identifies BitTorrent clients (Azureus, BitTorrent, BTWebClient, Shareaza, FlashGet)
 
-8. **Signature Matching**: 88+ known BitTorrent protocol patterns
+8. **Signature Matching**: 95+ known BitTorrent protocol patterns
    - Protocol handshakes (`\x13BitTorrent protocol`)
    - PEX extension keys (`ut_pex`, `added`, `dropped`, `added6`)
    - DHT keys (ping, get_peers, announce_peer, find_node)
@@ -152,10 +152,13 @@ The blocker employs 11 complementary detection techniques, ordered by specificit
    - Extension chain verification
    - Header structure validation
 
-10. **DHT Analysis** (BEP 5): Structural bencode dictionary validation
-    - Query/Response type checking (y:q, y:r)
+10. **DHT Analysis** (BEP 5): Enhanced structural bencode validation (Suricata-inspired)
+    - Query/Response/Error type checking (y:q, y:r, y:e)
+    - Suricata-specific prefix validation (d1:ad, d1:rd, d2:ip, d1:el)
     - Transaction ID presence
     - DHT-specific keys (nodes, values, token)
+    - **Node structure validation** - IPv4 (26 bytes/node) and IPv6 (38 bytes/node)
+    - Binary node list length verification
 
 11. **Entropy Analysis**: Last-resort detection for fully encrypted traffic
     - Shannon entropy calculation
@@ -184,18 +187,19 @@ go test ./internal/blocker -bench=. -benchmem
 
 The project includes comprehensive test coverage:
 
-- **70%+** code coverage of blocker package
-- **135+** test cases covering all detection methods
-- **14** performance benchmarks
+- **73%+** code coverage of blocker package
+- **154+** test cases covering all detection methods
+- **16** performance benchmarks
 
 Test files:
 - `analyzer_test.go` - Multi-layer packet analysis tests (12 test cases)
-- `detectors_test.go` - Protocol detection tests (89 test cases)
+- `detectors_test.go` - Protocol detection tests (108 test cases)
   - MSE/PE encryption detection tests
   - LSD detection tests
   - Extended Protocol (BEP 10) tests
   - FAST Extension (BEP 6) tests
   - HTTP BitTorrent detection tests (WebSeed, Bitcomet, User-Agent)
+  - Enhanced DHT detection tests (Suricata prefixes, node validation)
   - UDP tracker, uTP, DHT, SOCKS tests
 - `config_test.go` - Configuration validation tests (10 test cases)
 - `ipban_test.go` - IP banning mechanism tests (26 test cases)
@@ -218,10 +222,11 @@ The blocker uses multiple complementary techniques to minimize false positives:
 - **Whitelist**: Common ports excluded (HTTP, HTTPS, SSH, DNS, XMPP, DNS-over-TLS)
 - **11-Layer Detection**: Ordered by specificity to reduce false positives
 - **Conservative Thresholds**: Entropy threshold (7.6), minimum payload size (60 bytes)
-- **Extensive Testing**: 135+ test cases covering edge cases and real-world patterns
+- **Extensive Testing**: 154+ test cases covering edge cases and real-world patterns
 - **Critical MSE/PE Detection**: Catches 70-80% of encrypted BitTorrent traffic
 - **Multi-BEP Support**: Implements detection for BEPs 5, 6, 10, 11, 14, 19, 29
 - **HTTP Protocol Coverage**: Detects WebSeed, Bitcomet, and client User-Agents
+- **Suricata-Grade DHT Validation**: Binary node structure validation for enhanced accuracy
 
 ## Performance
 
