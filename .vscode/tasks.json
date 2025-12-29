@@ -1,0 +1,26 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "go build",
+            "type": "shell",
+            "command": "go build -o bin/hello ./cmd/hello",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "go run",
+            "type": "shell",
+            "command": "go run ./cmd/hello",
+            "group": "none"
+        },
+        {
+            "label": "go test",
+            "type": "shell",
+            "command": "go test ./...",
+            "group": "test"
+        }
+    ]
+}
