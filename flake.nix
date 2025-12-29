@@ -49,11 +49,13 @@
             # CGO is automatically enabled when buildInputs contains C libraries
             # No need to set CGO_ENABLED explicitly
 
-            # Build flags
+            # Build flags with version information
             ldflags = [
               "-s"
               "-w"
               "-X main.Version=${version}"
+              "-X main.Commit=${self.rev or "dirty"}"
+              "-X main.Date=${self.lastModifiedDate or "unknown"}"
             ];
 
             meta = with pkgs.lib; {

@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"flag"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -10,7 +12,25 @@ import (
 	"github.com/example/BitTorrentBlocker/internal/blocker"
 )
 
+// Version information (set at build time via ldflags)
+var (
+	Version = "0.1.0"
+	Commit  = "dev"
+	Date    = "unknown"
+)
+
 func main() {
+	// Define flags
+	showVersion := flag.Bool("version", false, "Show version information")
+	flag.Parse()
+
+	// Handle version flag
+	if *showVersion {
+		fmt.Printf("btblocker version %s\n", Version)
+		fmt.Printf("  commit: %s\n", Commit)
+		fmt.Printf("  built:  %s\n", Date)
+		os.Exit(0)
+	}
 	// Create blocker with default configuration
 	config := blocker.DefaultConfig()
 
