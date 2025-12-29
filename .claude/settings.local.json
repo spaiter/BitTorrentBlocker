@@ -9,7 +9,13 @@
       "Bash(git reset:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Bash(go tool cover:*)"
+      "Bash(go tool cover:*)",
+      "Bash(chmod:*)",
+      "Bash(docker:*)",
+      "Bash(docker-compose:*)",
+      "Bash(bash run-simple-e2e.sh:*)",
+      "Bash(gh run list:*)",
+      "Bash(ls:*)"
     ]
   }
 }
