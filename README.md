@@ -220,6 +220,14 @@ Unit test files:
 
 See [test/integration/README.md](test/integration/README.md) for details.
 
+**End-to-End Tests:**
+- Real-world deployment simulation on NixOS
+- Actual network traffic interception with nfqueue
+- iptables/ipset integration testing
+- Complete service lifecycle verification
+
+See [test/e2e/README.md](test/e2e/README.md) for E2E testing details.
+
 ### Build
 
 ```bash
@@ -231,6 +239,23 @@ make build
 ```bash
 make run
 ```
+
+## Deployment
+
+### NixOS
+
+The project includes a complete NixOS module for production deployment:
+
+```nix
+# /etc/nixos/configuration.nix
+services.btblocker = {
+  enable = true;
+  interfaces = [ "eth0" ];
+  entropyThreshold = 7.6;
+};
+```
+
+See [docs/NIXOS_DEPLOYMENT.md](docs/NIXOS_DEPLOYMENT.md) for complete deployment guide.
 
 ## Detection Accuracy
 
