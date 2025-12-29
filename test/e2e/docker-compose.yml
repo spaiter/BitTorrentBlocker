@@ -47,7 +47,7 @@ services:
       - ../..:/app
     networks:
       - e2e-network
-    command: /app/test/e2e/run-e2e-docker.sh
+    command: bash /app/test/e2e/run-e2e-docker.sh
 
 networks:
   e2e-network:
