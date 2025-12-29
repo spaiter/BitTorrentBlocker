@@ -126,7 +126,7 @@ config := blocker.Config{
 
 ### Detection Methods
 
-The blocker employs 11 complementary detection techniques, ordered by specificity:
+The blocker employs 11 complementary detection techniques, ordered by performance (fastest first) while maintaining high specificity:
 
 1. **LSD Detection** (BEP 14): Local Service Discovery multicast traffic
    - IPv4 multicast (239.192.152.143:6771) and IPv6 (ff15::efc0:988f:6771)
@@ -318,11 +318,14 @@ MIT — see [LICENSE](LICENSE).
 
 ## Credits
 
-Detection techniques based on:
-- [nDPI](https://github.com/ntop/nDPI) - Network protocol detection
-- [libtorrent](https://www.libtorrent.org/) - BitTorrent protocol implementation
-- [Suricata](https://suricata.io/) - IDS/IPS rules
-- [Sing-box](https://github.com/SagerNet/sing-box) - uTP detection
+This project implements BitTorrent detection techniques inspired by and learned from the following open-source projects:
+
+- [nDPI](https://github.com/ntop/nDPI) (LGPLv3) - Deep packet inspection methodologies and protocol signatures
+- [libtorrent](https://www.libtorrent.org/) (BSD-3-Clause) - BitTorrent protocol specifications and implementation details
+- [Suricata](https://suricata.io/) (GPLv2) - IDS/IPS rules and detection patterns
+- [Sing-box](https://github.com/SagerNet/sing-box) (GPLv3) - uTP protocol detection techniques
+
+**Note:** This project is an independent implementation written from scratch in Go. No source code was copied from the above projects. We studied their detection approaches and reimplemented similar techniques in our own codebase. All detection logic is original work released under the MIT License.
 
 ## Security Notice
 

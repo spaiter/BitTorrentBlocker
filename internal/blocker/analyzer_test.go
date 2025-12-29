@@ -38,7 +38,7 @@ func TestAnalyzer_AnalyzePacket(t *testing.T) {
 			payload:     []byte("d1:ad2:id20:abcdefghij0123456789e1:q4:ping1:t2:aa1:y1:qe"),
 			isUDP:       true,
 			shouldBlock: true,
-			reason:      "BitTorrent Signature", // Contains "1:y1:q" signature
+			reason:      "DHT Bencode Structure (BEP 5)", // DHT detection is now faster than signatures
 		},
 		{
 			name: "uTP packet",
@@ -167,9 +167,9 @@ func TestAnalyzer_AnalyzePacketWithSOCKS5Unwrapping(t *testing.T) {
 		t.Errorf("AnalyzePacket() should detect DHT inside SOCKS5, but didn't block")
 	}
 
-	// Should detect BitTorrent signature inside (contains "1:y1:q")
-	if result.Reason != "BitTorrent Signature" {
-		t.Errorf("AnalyzePacket() Reason = %v, want BitTorrent Signature", result.Reason)
+	// Should detect DHT bencode structure (faster than signature detection after optimization)
+	if result.Reason != "DHT Bencode Structure (BEP 5)" {
+		t.Errorf("AnalyzePacket() Reason = %v, want DHT Bencode Structure (BEP 5)", result.Reason)
 	}
 }
 
@@ -226,8 +226,8 @@ func TestAnalyzer_AnalyzePacketEx_LSD(t *testing.T) {
 	if !result.ShouldBlock {
 		t.Errorf("AnalyzePacketEx() should detect LSD traffic")
 	}
-	if result.Reason != "Local Service Discovery" {
-		t.Errorf("AnalyzePacketEx() Reason = %v, want Local Service Discovery", result.Reason)
+	if result.Reason != "Local Service Discovery (BEP 14)" {
+		t.Errorf("AnalyzePacketEx() Reason = %v, want Local Service Discovery (BEP 14)", result.Reason)
 	}
 
 	// Test without destination info (should not trigger LSD detection)

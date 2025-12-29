@@ -15,7 +15,14 @@
       "Bash(docker-compose:*)",
       "Bash(bash run-simple-e2e.sh:*)",
       "Bash(gh run list:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(grep:*)",
+      "Bash(curl:*)",
+      "Bash(git tag:*)",
+      "Bash(gh release create:*)",
+      "Bash(where:*)",
+      "Bash(\"C:\\\\Program Files\\\\GitHub CLI\\\\gh.exe\" --version)",
+      "Bash(\"C:\\\\Program Files\\\\GitHub CLI\\\\gh.exe\" release create v0.1.0 --title \"Release v0.1.0\" --notes \"$\\(cat <<''EOF''\nFirst release of BitTorrent Blocker - a high-performance DPI-based BitTorrent traffic blocker for Linux.\n\n## Features\n\n- **Multi-Protocol Detection**: TCP and UDP BitTorrent traffic\n- **Deep Packet Inspection**: 11 complementary detection methods\n- **Protocol Coverage**:\n  - Standard BitTorrent handshakes\n  - MSE/PE Encryption \\(Message Stream Encryption\\)\n  - LSD \\(Local Service Discovery/BEP 14\\)\n  - Extended Protocol \\(BEP 10\\)\n  - FAST Extension \\(BEP 6\\)\n  - UDP tracker protocol\n  - DHT \\(Distributed Hash Table/BEP 5\\)\n  - PEX \\(Peer Exchange/BEP 11\\)\n  - uTP \\(Micro Transport Protocol/BEP 29\\)\n  - HTTP-based BitTorrent \\(WebSeed, Bitcomet\\)\n  - SOCKS5 proxy unwrapping\n  - Entropy analysis for encrypted traffic\n\n## Installation\n\n### NixOS / Nix \\(Recommended\\)\n\n\\\\`\\\\`\\\\`bash\n# Install to your profile\nnix profile install github:spaiter/BitTorrentBlocker\n\n# Or try without installing\nnix run github:spaiter/BitTorrentBlocker\n\\\\`\\\\`\\\\`\n\nBinary cache available at https://btblocker.cachix.org\n\nSee [docs/NIX_INSTALLATION.md]\\(https://github.com/spaiter/BitTorrentBlocker/blob/main/docs/NIX_INSTALLATION.md\\) for complete installation guide.\n\n### From Source\n\n\\\\`\\\\`\\\\`bash\ngit clone https://github.com/spaiter/BitTorrentBlocker\ncd BitTorrentBlocker\nmake build\n\\\\`\\\\`\\\\`\n\n## Documentation\n\n- [Quick Start Guide for NixOS]\\(https://github.com/spaiter/BitTorrentBlocker/blob/main/docs/QUICK_START_NIXOS.md\\)\n- [NixOS Deployment Guide]\\(https://github.com/spaiter/BitTorrentBlocker/blob/main/docs/NIXOS_DEPLOYMENT.md\\)\n- [Cachix Setup]\\(https://github.com/spaiter/BitTorrentBlocker/blob/main/docs/CACHIX_SETUP.md\\)\n\n## Test Coverage\n\n- **76%+** code coverage\n- **165+** unit test cases\n- **16** performance benchmarks\n- Integration tests with Docker\n- E2E tests with NixOS\n\n## Performance\n\nBenchmark results \\(AMD Ryzen 7 9800X3D\\):\n- BitTorrent detection: 4.1 ns/op, 0 allocs/op\n- UDP Tracker check: 2.4 ns/op, 0 allocs/op\n- HTTP traffic analysis: 565 ns/op, 0 allocs/op\n- Cached IP ban: 20.6 ns/op, 0 allocs/op\n\n## What''s Changed\n\nInitial release with comprehensive BitTorrent detection and blocking capabilities.\n\n**Full Changelog**: https://github.com/spaiter/BitTorrentBlocker/commits/v0.1.0\nEOF\n\\)\")"
     ]
   }
 }
