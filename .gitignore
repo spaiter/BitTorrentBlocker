@@ -18,8 +18,8 @@ coverage-integration.out
 # Logs and temp files
 *.log
 
-# Vendor
-/vendor/
+# Vendor (commented out - vendor directory is committed for Nix builds)
+# /vendor/
 
 # Go build cache
 GOCACHE/
