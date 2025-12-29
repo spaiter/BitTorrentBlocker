@@ -14,10 +14,7 @@ linters:
     - staticcheck
     - unused
     - gosimple
-    - structcheck
-    - varcheck
     - ineffassign
-    - deadcode
     - typecheck
     - stylecheck
     - gosec
@@ -27,7 +24,11 @@ linters:
     - unparam
     - unconvert
     - prealloc
-    - exportloopref
+  disable:
+    - structcheck  # deprecated
+    - varcheck     # deprecated
+    - deadcode     # deprecated
+    - exportloopref  # replaced by copyloopvar
 
 linters-settings:
   gocyclo:
