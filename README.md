@@ -8,7 +8,31 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Cachix Cache](https://img.shields.io/badge/cachix-btblocker-blue.svg)](https://btblocker.cachix.org)
 
-A high-performance Go library and CLI tool for detecting and blocking BitTorrent traffic using Deep Packet Inspection (DPI). Combines techniques from nDPI, libtorrent, Suricata, and Sing-box to provide comprehensive BitTorrent protocol detection.
+A high-performance Go library and CLI tool for detecting and blocking BitTorrent traffic using Deep Packet Inspection (DPI). Designed primarily for **VPS and home servers** that need to prevent BitTorrent usage to comply with local regulations or service provider terms.
+
+## Primary Use Case
+
+**Server Liability Protection**: In many jurisdictions, server operators can be held liable for BitTorrent traffic passing through their infrastructure, especially when:
+- Running VPN/proxy services where users might torrent copyrighted content
+- Operating in countries with strict copyright enforcement laws
+- Hosting services where terms explicitly prohibit P2P file sharing
+- Managing shared hosting where one user's activity affects others
+
+This tool helps server administrators **proactively block BitTorrent** at the network level to:
+- ✅ Protect against legal liability from users' torrent activity
+- ✅ Comply with local regulations and ISP/datacenter terms of service
+- ✅ Prevent bandwidth abuse from P2P traffic
+- ✅ Avoid DMCA notices and copyright complaints
+- ✅ Maintain service quality by preventing network congestion
+
+**Common deployment scenarios:**
+- VPN/VPS providers in countries with strict copyright laws
+- Educational institutions preventing unauthorized file sharing
+- Corporate networks enforcing acceptable use policies
+- ISPs complying with regulatory requirements
+- Home servers protecting owners from user liability
+
+The tool provides **defense-in-depth** - even if users don't intend to violate policies, it prevents accidental BitTorrent usage that could lead to legal complications.
 
 ## Features
 
@@ -327,6 +351,62 @@ This project implements BitTorrent detection techniques inspired by and learned 
 
 **Note:** This project is an independent implementation written from scratch in Go. No source code was copied from the above projects. We studied their detection approaches and reimplemented similar techniques in our own codebase. All detection logic is original work released under the MIT License.
 
-## Security Notice
+## Legal & Responsible Use
 
-This tool is intended for network administration and security purposes. Ensure you have proper authorization before deploying on any network. The authors are not responsible for misuse.
+### Intended Use
+
+This tool is designed for **legitimate network administration and compliance purposes**:
+
+✅ **Appropriate Uses:**
+- Protecting your own VPS/home server from liability
+- Enforcing organizational acceptable use policies
+- Complying with local laws and ISP/datacenter terms of service
+- Preventing accidental policy violations by users
+- Managing network resources and preventing abuse
+- Meeting regulatory compliance requirements
+
+❌ **Inappropriate Uses:**
+- Deploying on networks you don't own or manage
+- Violating users' privacy or legal rights without proper authorization
+- Circumventing legitimate network monitoring or legal intercept
+- Using in jurisdictions where DPI tools are prohibited
+
+### Disclaimers
+
+1. **Authorization Required**: Only deploy this tool on infrastructure you own, manage, or have explicit authorization to control.
+
+2. **User Notification**: In many jurisdictions, you must inform users that network traffic is being monitored and filtered. Check your local regulations.
+
+3. **No Legal Advice**: This tool helps with technical compliance but does not constitute legal advice. Consult with legal counsel about your obligations.
+
+4. **No Warranty**: This software is provided "as-is" without guarantees of detection accuracy. Some BitTorrent traffic may evade detection, and legitimate traffic may occasionally be blocked.
+
+5. **Liability**: The authors and contributors are not responsible for:
+   - Misuse of this tool
+   - Legal issues arising from deployment
+   - False positives or negatives in detection
+   - Any damages resulting from use of this software
+
+### Privacy Considerations
+
+This tool performs **Deep Packet Inspection (DPI)** which analyzes network traffic content. When deploying:
+
+- **Inform users** that traffic filtering is active
+- **Document your policies** clearly in terms of service
+- **Minimize data retention** - only log what's necessary for your compliance needs
+- **Secure your logs** - treat detection logs as sensitive data
+- **Respect privacy laws** - comply with GDPR, CCPA, and local privacy regulations
+
+### Compliance Note
+
+BitTorrent protocol itself is **not illegal** - it's a legitimate technology used for:
+- Linux distribution downloads
+- Game updates and patches
+- Open-source software distribution
+- Legal content sharing
+
+This tool exists because **server operators** may face liability for copyrighted content transferred through their infrastructure, regardless of their knowledge or intent. The tool helps prevent such liability by blocking the protocol entirely.
+
+### Support
+
+For questions about deployment, legal compliance, or ethical use, please open an issue on GitHub. We're here to help responsible server administrators protect their infrastructure.
