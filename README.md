@@ -50,6 +50,22 @@ internal/blocker/
 
 ## Installation
 
+### NixOS / Nix (Recommended)
+
+```bash
+# Try it without installing
+nix run github:spaiter/BitTorrentBlocker
+
+# Install to your profile
+nix profile install github:spaiter/BitTorrentBlocker
+
+# Or add to your NixOS configuration (see docs/NIX_INSTALLATION.md)
+```
+
+See [NIX_INSTALLATION.md](docs/NIX_INSTALLATION.md) for complete NixOS installation guide.
+
+### From Source
+
 ```bash
 # Clone the repository
 git clone https://github.com/spaiter/BitTorrentBlocker

@@ -1,0 +1,98 @@
+{
+  description = "BitTorrent Blocker - High-performance DPI-based BitTorrent traffic blocker";
+
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    flake-utils.url = "github:numtide/flake-utils";
+  };
+
+  outputs = { self, nixpkgs, flake-utils }:
+    flake-utils.lib.eachDefaultSystem (system:
+      let
+        pkgs = nixpkgs.legacyPackages.${system};
+        version = "0.1.0";
+      in
+      {
+        packages = {
+          default = self.packages.${system}.btblocker;
+
+          btblocker = pkgs.buildGoModule {
+            pname = "btblocker";
+            inherit version;
+
+            src = ./.;
+
+            # Go module dependencies hash
+            # Run `nix build` and it will tell you the correct hash if this is wrong
+            vendorHash = "sha256-wJM+qFA9DHz15wqP+t9yP2X3Np6VUhRXEa5Fll5bbHk=";
+
+            # Specify Go version
+            buildInputs = with pkgs; [
+              libnetfilter_queue
+              libnfnetlink
+            ];
+
+            nativeBuildInputs = with pkgs; [
+              pkg-config
+            ];
+
+            # Build with CGO enabled for netfilter support
+            CGO_ENABLED = 1;
+
+            # Build only the main binary
+            subPackages = [ "cmd/btblocker" ];
+
+            # Build flags
+            ldflags = [
+              "-s"
+              "-w"
+              "-X main.Version=${version}"
+            ];
+
+            meta = with pkgs.lib; {
+              description = "High-performance Go library and CLI tool for detecting and blocking BitTorrent traffic using Deep Packet Inspection";
+              homepage = "https://github.com/spaiter/BitTorrentBlocker";
+              license = licenses.mit;
+              maintainers = [ ];
+              platforms = platforms.linux;
+              mainProgram = "btblocker";
+            };
+          };
+        };
+
+        # Development shell
+        devShells.default = pkgs.mkShell {
+          buildInputs = with pkgs; [
+            go_1_21
+            gopls
+            gotools
+            go-tools
+            libnetfilter_queue
+            libnfnetlink
+            pkg-config
+            ipset
+            iptables
+            golangci-lint
+          ];
+
+          shellHook = ''
+            echo "BitTorrent Blocker development environment"
+            echo "Go version: $(go version)"
+            echo ""
+            echo "Available commands:"
+            echo "  make build  - Build the binary"
+            echo "  make test   - Run tests"
+            echo "  make run    - Run the blocker (requires root)"
+          '';
+        };
+
+        # NixOS module for easy system integration
+        nixosModules.default = import ./test/e2e/nixos-module.nix;
+      }
+    ) // {
+      # Overlay for adding to your own NixOS configuration
+      overlays.default = final: prev: {
+        btblocker = self.packages.${prev.system}.btblocker;
+      };
+    };
+}

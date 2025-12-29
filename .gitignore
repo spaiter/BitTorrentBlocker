@@ -23,3 +23,8 @@ coverage-integration.out
 
 # Go build cache
 GOCACHE/
+
+# Nix build artifacts
+result
+result-*
+.direnv/
