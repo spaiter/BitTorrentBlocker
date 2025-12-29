@@ -23,8 +23,7 @@
             src = ./.;
 
             # Go module dependencies hash
-            # Set to pkgs.lib.fakeHash to get the real hash on first build
-            vendorHash = "sha256-R8vbjCIxJwix/7NuZZGEWBhoAhrY/TUiSZE90CWvARE=";
+            vendorHash = "sha256-kQfQXHJHGIPiKr5AFgmYr3M2m1NRdOUby5vm1qdu13s=";
 
             # Specify Go version
             buildInputs = with pkgs; [
