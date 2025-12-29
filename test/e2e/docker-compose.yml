@@ -15,11 +15,10 @@ services:
       - SYS_MODULE
     volumes:
       - ../..:/app
-      - /lib/modules:/lib/modules:ro
     networks:
       e2e-network:
         ipv4_address: 172.20.0.10
-    command: /app/test/e2e/start-server.sh
+    command: sleep infinity
 
   # Test client simulating BitTorrent traffic
   e2e-client:
