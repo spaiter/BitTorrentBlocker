@@ -39,7 +39,9 @@ jobs:
 
       - name: Push to Cachix
         run: |
-          nix path-info .#btblocker --json | jq -r '.[].path' | cachix push btblocker
+          # Push the package and all its runtime dependencies
+          nix path-info .#btblocker --closure-size --json | jq -r '.[].path' | cachix push btblocker
+          echo "Pushed btblocker package to Cachix"
 
       - name: Show package info
         run: |
