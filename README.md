@@ -1,5 +1,6 @@
 # BitTorrent Blocker
 
+[![Release](https://img.shields.io/github/v/release/spaiter/BitTorrentBlocker)](https://github.com/spaiter/BitTorrentBlocker/releases)
 [![CI](https://github.com/spaiter/BitTorrentBlocker/actions/workflows/ci.yml/badge.svg)](https://github.com/spaiter/BitTorrentBlocker/actions/workflows/ci.yml)
 [![Nix Build](https://github.com/spaiter/BitTorrentBlocker/actions/workflows/nix.yml/badge.svg)](https://github.com/spaiter/BitTorrentBlocker/actions/workflows/nix.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/spaiter/BitTorrentBlocker)](https://goreportcard.com/report/github.com/spaiter/BitTorrentBlocker)
