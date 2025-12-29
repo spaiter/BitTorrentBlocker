@@ -2,6 +2,8 @@ module github.com/example/BitTorrentBlocker
 
 go 1.20
 
+// Dependencies for BitTorrent detection and blocking
+
 require (
 	github.com/florianl/go-nfqueue v1.3.1
 	github.com/google/gopacket v1.1.19
