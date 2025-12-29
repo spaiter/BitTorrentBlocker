@@ -91,16 +91,26 @@ jobs:
           go-version: '1.20'
           cache: true
 
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libnetfilter-queue-dev \
+            libnfnetlink-dev
+
+      - name: Build btblocker binary
+        run: make build
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Build Docker images
         working-directory: test/e2e
-        run: docker-compose build
+        run: docker compose build
 
       - name: Start E2E environment
         working-directory: test/e2e
-        run: docker-compose up -d
+        run: docker compose up -d
 
       - name: Wait for containers to be ready
         run: sleep 10
@@ -109,21 +119,21 @@ jobs:
         working-directory: test/e2e
         run: |
           chmod +x run-simple-e2e.sh
-          ./run-simple-e2e.sh
+          bash run-simple-e2e.sh
 
       - name: Show container logs on failure
         if: failure()
         working-directory: test/e2e
         run: |
           echo "=== Server logs ==="
-          docker logs btblocker-e2e-server
+          docker logs btblocker-e2e-server || true
           echo "=== Client logs ==="
-          docker logs btblocker-e2e-client
+          docker logs btblocker-e2e-client || true
 
       - name: Cleanup
         if: always()
         working-directory: test/e2e
-        run: docker-compose down -v
+        run: docker compose down -v
 
   # Linting and Code Quality
   lint:
