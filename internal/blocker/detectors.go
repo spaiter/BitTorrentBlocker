@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"math"
-	"strings"
 )
 
 // CheckSignatures searches for BitTorrent signature patterns in payload
@@ -200,8 +199,7 @@ func CheckBencodeDHT(payload []byte) bool {
 		return false
 	}
 
-	s := string(payload)
-
+	// Optimized: use bytes.Contains instead of string conversion to avoid allocation
 	// Check for Suricata-specific prefixes at start
 	if bytes.HasPrefix(payload, []byte("d1:ad")) ||
 		bytes.HasPrefix(payload, []byte("d1:rd")) ||
@@ -211,15 +209,15 @@ func CheckBencodeDHT(payload []byte) bool {
 	}
 
 	// Must contain query/response/error type
-	hasType := strings.Contains(s, "1:y1:q") ||
-		strings.Contains(s, "1:y1:r") ||
-		strings.Contains(s, "1:y1:e")
+	hasType := bytes.Contains(payload, []byte("1:y1:q")) ||
+		bytes.Contains(payload, []byte("1:y1:r")) ||
+		bytes.Contains(payload, []byte("1:y1:e"))
 	if !hasType {
 		return false
 	}
 
 	// Check for transaction ID or DHT-specific fields
-	if strings.Contains(s, "1:t") {
+	if bytes.Contains(payload, []byte("1:t")) {
 		return true
 	}
 
@@ -229,8 +227,8 @@ func CheckBencodeDHT(payload []byte) bool {
 	}
 
 	// Check for values list or token
-	return strings.Contains(s, "6:values") ||
-		strings.Contains(s, "5:token")
+	return bytes.Contains(payload, []byte("6:values")) ||
+		bytes.Contains(payload, []byte("5:token"))
 }
 
 // ShannonEntropy calculates data randomness/entropy
@@ -397,34 +395,28 @@ func CheckHTTPBitTorrent(payload []byte) bool {
 		return false
 	}
 
-	s := string(payload)
-
+	// Optimize: use bytes.Contains instead of string conversion to avoid allocation
 	// 1. WebSeed Protocol (BEP 19)
 	// Format: GET /webseed?info_hash=<hash>&piece=<num>
-	if strings.Contains(s, "GET /webseed?info_hash=") {
+	if bytes.Contains(payload, []byte("/webseed?info_hash=")) {
 		return true
 	}
 
 	// 2. Bitcomet Persistent Seed Protocol
 	// Format: GET /data?fid=<file_id>&size=<size>
-	if strings.Contains(s, "GET /data?fid=") && strings.Contains(s, "&size=") {
+	if bytes.Contains(payload, []byte("/data?fid=")) && bytes.Contains(payload, []byte("&size=")) {
 		return true
 	}
 
 	// 3. User-Agent Detection (Common BitTorrent clients)
 	// Check for known BitTorrent client User-Agent strings
-	userAgentPatterns := []string{
-		"User-Agent: Azureus",
-		"User-Agent: BitTorrent",
-		"User-Agent: BTWebClient",
-		"User-Agent: Shareaza",
-		"User-Agent: FlashGet",
-	}
-
-	for _, pattern := range userAgentPatterns {
-		if strings.Contains(s, pattern) {
-			return true
-		}
+	// Optimized: use bytes.Contains to avoid string allocation
+	if bytes.Contains(payload, []byte("User-Agent: Azureus")) ||
+		bytes.Contains(payload, []byte("User-Agent: BitTorrent")) ||
+		bytes.Contains(payload, []byte("User-Agent: BTWebClient")) ||
+		bytes.Contains(payload, []byte("User-Agent: Shareaza")) ||
+		bytes.Contains(payload, []byte("User-Agent: FlashGet")) {
+		return true
 	}
 
 	return false
