@@ -36,11 +36,11 @@
               pkg-config
             ];
 
-            # Build with CGO enabled for netfilter support
-            CGO_ENABLED = 1;
-
             # Build only the main binary
             subPackages = [ "cmd/btblocker" ];
+
+            # CGO is automatically enabled when buildInputs contains C libraries
+            # No need to set CGO_ENABLED explicitly
 
             # Build flags
             ldflags = [
