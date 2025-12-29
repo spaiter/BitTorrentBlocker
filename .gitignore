@@ -28,3 +28,6 @@ GOCACHE/
 result
 result-*
 .direnv/
+
+# Claude Code local settings
+.claude/settings.local.json
