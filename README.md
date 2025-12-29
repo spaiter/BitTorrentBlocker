@@ -187,13 +187,13 @@ go test ./internal/blocker -bench=. -benchmem
 
 The project includes comprehensive test coverage:
 
-- **73%+** code coverage of blocker package
-- **154+** test cases covering all detection methods
+- **76%+** code coverage of blocker package
+- **165+** test cases covering all detection methods
 - **16** performance benchmarks
 
 Test files:
-- `analyzer_test.go` - Multi-layer packet analysis tests (12 test cases)
-- `detectors_test.go` - Protocol detection tests (108 test cases)
+- `analyzer_test.go` - Multi-layer packet analysis tests (13 test cases)
+- `detectors_test.go` - Protocol detection tests (117 test cases)
   - MSE/PE encryption detection tests
   - LSD detection tests
   - Extended Protocol (BEP 10) tests
@@ -222,7 +222,7 @@ The blocker uses multiple complementary techniques to minimize false positives:
 - **Whitelist**: Common ports excluded (HTTP, HTTPS, SSH, DNS, XMPP, DNS-over-TLS)
 - **11-Layer Detection**: Ordered by specificity to reduce false positives
 - **Conservative Thresholds**: Entropy threshold (7.6), minimum payload size (60 bytes)
-- **Extensive Testing**: 154+ test cases covering edge cases and real-world patterns
+- **Extensive Testing**: 165+ test cases covering edge cases and real-world patterns
 - **Critical MSE/PE Detection**: Catches 70-80% of encrypted BitTorrent traffic
 - **Multi-BEP Support**: Implements detection for BEPs 5, 6, 10, 11, 14, 19, 29
 - **HTTP Protocol Coverage**: Detects WebSeed, Bitcomet, and client User-Agents

@@ -96,6 +96,49 @@ func TestUnwrapSOCKS5(t *testing.T) {
 			wantPayload: nil,
 			wantOk:      false,
 		},
+		{
+			name: "SOCKS5 Domain",
+			packet: []byte{
+				0x00, 0x00, 0x00, // Reserved + Fragment
+				0x03,                         // ATYP: Domain
+				0x0B,                         // Domain length: 11
+				'e', 'x', 'a', 'm', 'p', 'l', 'e', '.', 'c', 'o', 'm', // Domain: "example.com"
+				0x1A, 0xE1,             // Port
+				0x64, 0x31, 0x3A, 0x61, // Payload: "d1:a"
+			},
+			wantPayload: []byte{0x64, 0x31, 0x3A, 0x61},
+			wantOk:      true,
+		},
+		{
+			name: "SOCKS5 Domain too short",
+			packet: []byte{
+				0x00, 0x00, 0x00, // Reserved + Fragment
+				0x03, // ATYP: Domain
+			},
+			wantPayload: nil,
+			wantOk:      false,
+		},
+		{
+			name: "SOCKS5 invalid ATYP",
+			packet: []byte{
+				0x00, 0x00, 0x00, // Reserved + Fragment
+				0x05, // ATYP: Invalid (not 1, 3, or 4)
+				192, 168, 1, 1,
+			},
+			wantPayload: nil,
+			wantOk:      false,
+		},
+		{
+			name: "SOCKS5 IPv4 no payload",
+			packet: []byte{
+				0x00, 0x00, 0x00, // Reserved + Fragment
+				0x01,           // ATYP: IPv4
+				192, 168, 1, 1, // IP
+				0x1A, 0xE1, // Port
+			},
+			wantPayload: nil,
+			wantOk:      false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -205,6 +248,23 @@ func TestCheckUDPTrackerDeep(t *testing.T) {
 			packet:   []byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x12, 0x34, 0x56, 0x78},
 			expected: false,
 		},
+		{
+			name: "Valid announce without recognized PeerID prefix",
+			packet: func() []byte {
+				p := make([]byte, 98)
+				// Connection ID (8 bytes)
+				copy(p[0:8], []byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88})
+				// Action: Announce (4 bytes)
+				p[8], p[9], p[10], p[11] = 0x00, 0x00, 0x00, 0x01
+				// Transaction ID (4 bytes)
+				p[12], p[13], p[14], p[15] = 0x12, 0x34, 0x56, 0x78
+				// Info hash (20 bytes at offset 16)
+				// PeerID at offset 36 with unknown prefix
+				copy(p[36:40], []byte("UNKN"))
+				return p
+			}(),
+			expected: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -260,6 +320,30 @@ func TestCheckUTPRobust(t *testing.T) {
 			packet: func() []byte {
 				p := make([]byte, 20)
 				p[0] = 0x51 // Version 1, Type 5 (invalid)
+				return p
+			}(),
+			expected: false,
+		},
+		{
+			name: "Extension offset exceeds packet length",
+			packet: func() []byte {
+				p := make([]byte, 21)
+				p[0] = 0x21 // Version 1, Type ST_DATA (2)
+				p[1] = 0x01 // Extension type 1
+				p[20] = 0x00 // Next extension = 0 (end of chain, at offset 20)
+				// Missing length byte at offset 21 (would be out of bounds)
+				return p
+			}(),
+			expected: false,
+		},
+		{
+			name: "Extension length exceeds packet",
+			packet: func() []byte {
+				p := make([]byte, 23)
+				p[0] = 0x21  // Version 1, Type ST_DATA (2)
+				p[1] = 0x01  // Extension type 1
+				p[20] = 0x00 // Next extension = 0 (end)
+				p[21] = 0xFF // Length = 255 (way more than packet size)
 				return p
 			}(),
 			expected: false,
@@ -379,6 +463,26 @@ func TestCheckBencodeDHT_SuricataEnhancements(t *testing.T) {
 			name:     "Wrong prefix d3:ab",
 			payload:  []byte("d3:abc4:teste"),
 			expected: false,
+		},
+		{
+			name:     "Too short (< 8 bytes)",
+			payload:  []byte("d1:y1e"),
+			expected: false,
+		},
+		{
+			name:     "Missing start marker 'd'",
+			payload:  []byte("1:y1:q1:t2:aae"),
+			expected: false,
+		},
+		{
+			name:     "Missing end marker 'e'",
+			payload:  []byte("d1:y1:q1:t2:aa"),
+			expected: false,
+		},
+		{
+			name:     "DHT with transaction ID only (no nodes/values/token)",
+			payload:  []byte("d1:t2:aa1:y1:qe"),
+			expected: true,
 		},
 	}
 
@@ -899,6 +1003,16 @@ func TestCheckFASTExtension(t *testing.T) {
 				0x00, 0x00, 0x00, 0x02, // Length: 2 (should be 1)
 				0x0E, // Message ID: 14
 				0x00,
+			},
+			expected: false,
+		},
+		{
+			name: "Wrong length for Reject Request",
+			payload: []byte{
+				0x00, 0x00, 0x00, 0x0C, // Length: 12 (should be 13)
+				0x10,                   // Message ID: 16
+				0x00, 0x00, 0x00, 0x05,
+				0x00, 0x00, 0x00, 0x00,
 			},
 			expected: false,
 		},

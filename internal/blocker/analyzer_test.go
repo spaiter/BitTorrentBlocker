@@ -214,6 +214,33 @@ func TestAnalyzer_MinPayloadSize(t *testing.T) {
 	}
 }
 
+func TestAnalyzer_AnalyzePacketEx_LSD(t *testing.T) {
+	config := DefaultConfig()
+	analyzer := NewAnalyzer(config)
+
+	// Test LSD detection with destination IP and port
+	lsdPayload := []byte("BT-SEARCH * HTTP/1.1\r\nHost: 239.192.152.143:6771\r\nInfohash: ABCD\r\nPort: 6881\r\n\r\n")
+
+	// Test with correct LSD multicast address
+	result := analyzer.AnalyzePacketEx(lsdPayload, true, "239.192.152.143", 6771)
+	if !result.ShouldBlock {
+		t.Errorf("AnalyzePacketEx() should detect LSD traffic")
+	}
+	if result.Reason != "Local Service Discovery" {
+		t.Errorf("AnalyzePacketEx() Reason = %v, want Local Service Discovery", result.Reason)
+	}
+
+	// Test without destination info (should not trigger LSD detection)
+	result2 := analyzer.AnalyzePacketEx(lsdPayload, true, "", 0)
+	// Should still be detected via signature
+	if !result2.ShouldBlock {
+		t.Errorf("AnalyzePacketEx() should still detect via signatures")
+	}
+	if result2.Reason == "Local Service Discovery" {
+		t.Errorf("AnalyzePacketEx() should not detect LSD without dest info")
+	}
+}
+
 func TestNewAnalyzer(t *testing.T) {
 	config := DefaultConfig()
 	analyzer := NewAnalyzer(config)
