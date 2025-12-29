@@ -44,8 +44,8 @@ in {
     };
 
     banDuration = mkOption {
-      type = types.str;
-      default = "18000";
+      type = types.int;
+      default = 18000;
       description = "Ban duration in seconds (default: 5 hours)";
     };
 
@@ -98,7 +98,7 @@ in {
 
       preStart = ''
         # Create ipset for banned IPs
-        ${pkgs.ipset}/bin/ipset create -exist ${cfg.ipsetName} hash:ip timeout ${cfg.banDuration}
+        ${pkgs.ipset}/bin/ipset create -exist ${cfg.ipsetName} hash:ip timeout ${toString cfg.banDuration}
 
         # Configure nftables rules
         ${pkgs.nftables}/bin/nft add table inet btblocker 2>/dev/null || true
