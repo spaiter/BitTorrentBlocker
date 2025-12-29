@@ -1,0 +1,82 @@
+name: Update Flake VendorHash
+
+on:
+  push:
+    paths:
+      - 'go.mod'
+      - 'go.sum'
+    branches:
+      - main
+
+jobs:
+  update-vendor-hash:
+    name: Update vendorHash in flake.nix
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[skip-flake-update]')"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v25
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+
+      - name: Calculate correct vendorHash
+        id: calc-hash
+        continue-on-error: true
+        run: |
+          # Try to build, it will fail with the correct hash
+          nix build .#btblocker --print-build-logs 2>&1 | tee build.log
+
+          # Extract the correct hash from error message
+          CORRECT_HASH=$(grep "got:" build.log | grep -oP 'sha256-[A-Za-z0-9+/=]+' | head -1)
+
+          if [ -n "$CORRECT_HASH" ]; then
+            echo "correct_hash=$CORRECT_HASH" >> $GITHUB_OUTPUT
+            echo "Found correct hash: $CORRECT_HASH"
+          else
+            echo "No hash mismatch found, build may have succeeded"
+            echo "correct_hash=" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update flake.nix with correct hash
+        if: steps.calc-hash.outputs.correct_hash != ''
+        run: |
+          CORRECT_HASH="${{ steps.calc-hash.outputs.correct_hash }}"
+
+          # Update the vendorHash line in flake.nix
+          sed -i "s|vendorHash = \"sha256-[A-Za-z0-9+/=]*\";|vendorHash = \"$CORRECT_HASH\";|g" flake.nix
+
+          # Check if file was modified
+          if git diff --quiet flake.nix; then
+            echo "No changes needed"
+            exit 0
+          fi
+
+          echo "Updated flake.nix with vendorHash: $CORRECT_HASH"
+
+      - name: Commit and push if changed
+        if: steps.calc-hash.outputs.correct_hash != ''
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if ! git diff --quiet flake.nix; then
+            git add flake.nix
+            git commit -m "Update flake.nix vendorHash [skip-flake-update]
+
+Automatically updated vendorHash to ${{ steps.calc-hash.outputs.correct_hash }}
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
+            git push
+          else
+            echo "No changes to commit"
+          fi

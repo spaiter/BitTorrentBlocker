@@ -23,8 +23,8 @@
             src = ./.;
 
             # Go module dependencies hash
-            # Run `nix build` and it will tell you the correct hash if this is wrong
-            vendorHash = "sha256-wJM+qFA9DHz15wqP+t9yP2X3Np6VUhRXEa5Fll5bbHk=";
+            # Set to pkgs.lib.fakeHash to get the real hash on first build
+            vendorHash = "sha256-R8vbjCIxJwix/7NuZZGEWBhoAhrY/TUiSZE90CWvARE=";
 
             # Specify Go version
             buildInputs = with pkgs; [
