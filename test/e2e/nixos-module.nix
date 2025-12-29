@@ -80,12 +80,12 @@ in {
 
   config = mkIf cfg.enable {
     # Load required kernel modules
-    boot.kernelModules = [ "nfnetlink_queue" "xt_NFQUEUE" ];
+    boot.kernelModules = [ "nfnetlink_queue" "xt_NFQUEUE" "ip_set" "ip_set_hash_ip" ];
 
-    # Ensure ipset is available
+    # Ensure nftables and ipset are available
     environment.systemPackages = with pkgs; [
       ipset
-      iptables
+      nftables
     ];
 
     # Create systemd service
@@ -116,24 +116,25 @@ in {
         # Create ipset for banned IPs
         ${pkgs.ipset}/bin/ipset create -exist ${cfg.ipsetName} hash:ip timeout ${cfg.banDuration}
 
-        # Configure iptables rules
-        ${pkgs.iptables}/bin/iptables -I INPUT -m set --match-set ${cfg.ipsetName} src -j DROP
-        ${pkgs.iptables}/bin/iptables -I FORWARD -m set --match-set ${cfg.ipsetName} src -j DROP
+        # Configure nftables rules
+        ${pkgs.nftables}/bin/nft add table inet btblocker 2>/dev/null || true
+
+        # Drop packets from banned IPs
+        ${pkgs.nftables}/bin/nft add chain inet btblocker input { type filter hook input priority 0 \; policy accept \; } 2>/dev/null || true
+        ${pkgs.nftables}/bin/nft add chain inet btblocker forward { type filter hook forward priority 0 \; policy accept \; } 2>/dev/null || true
+        ${pkgs.nftables}/bin/nft add rule inet btblocker input ip saddr @${cfg.ipsetName} drop 2>/dev/null || true
+        ${pkgs.nftables}/bin/nft add rule inet btblocker forward ip saddr @${cfg.ipsetName} drop 2>/dev/null || true
 
         # Send traffic to nfqueue for analysis
+        ${pkgs.nftables}/bin/nft add chain inet btblocker prerouting { type filter hook prerouting priority -150 \; policy accept \; } 2>/dev/null || true
         ${lib.concatMapStringsSep "\n" (iface: ''
-          ${pkgs.iptables}/bin/iptables -t mangle -A PREROUTING -i ${iface} -j NFQUEUE --queue-num ${toString cfg.queueNum}
+          ${pkgs.nftables}/bin/nft add rule inet btblocker prerouting iifname "${iface}" queue num ${toString cfg.queueNum} 2>/dev/null || true
         '') cfg.interfaces}
       '';
 
       postStop = ''
-        # Clean up iptables rules
-        ${pkgs.iptables}/bin/iptables -D INPUT -m set --match-set ${cfg.ipsetName} src -j DROP 2>/dev/null || true
-        ${pkgs.iptables}/bin/iptables -D FORWARD -m set --match-set ${cfg.ipsetName} src -j DROP 2>/dev/null || true
-
-        ${lib.concatMapStringsSep "\n" (iface: ''
-          ${pkgs.iptables}/bin/iptables -t mangle -D PREROUTING -i ${iface} -j NFQUEUE --queue-num ${toString cfg.queueNum} 2>/dev/null || true
-        '') cfg.interfaces}
+        # Clean up nftables rules
+        ${pkgs.nftables}/bin/nft delete table inet btblocker 2>/dev/null || true
 
         # Destroy ipset (optional - uncomment to remove banned IPs on stop)
         # ${pkgs.ipset}/bin/ipset destroy ${cfg.ipsetName} 2>/dev/null || true
