@@ -97,7 +97,7 @@
       }
     ) // {
       # NixOS module for easy system integration
-      nixosModules.default = import ./test/e2e/nixos-module.nix;
+      nixosModules.default = import ./nix/module.nix;
 
       # Overlay for adding to your own NixOS configuration
       overlays.default = final: prev: {

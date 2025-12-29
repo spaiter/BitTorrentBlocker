@@ -8,32 +8,16 @@ with lib;
 let
   cfg = config.services.btblocker;
 
-  btblocker = pkgs.buildGoModule {
-    pname = "btblocker";
-    version = "0.1.0";
-    src = ../..;
-
-    vendorHash = null;
-
-    buildInputs = with pkgs; [
-      libnetfilter_queue
-      libnfnetlink
-    ];
-
-    nativeBuildInputs = with pkgs; [
-      pkg-config
-    ];
-
-    meta = {
-      description = "BitTorrent traffic blocker using Deep Packet Inspection";
-      license = licenses.mit;
-      platforms = platforms.linux;
-    };
-  };
-
 in {
   options.services.btblocker = {
     enable = mkEnableOption "BitTorrent blocker service";
+
+    package = mkOption {
+      type = types.package;
+      default = pkgs.btblocker;
+      defaultText = literalExpression "pkgs.btblocker";
+      description = "The btblocker package to use";
+    };
 
     queueNum = mkOption {
       type = types.int;
@@ -96,7 +80,7 @@ in {
 
       serviceConfig = {
         Type = "simple";
-        ExecStart = "${btblocker}/bin/btblocker";
+        ExecStart = "${cfg.package}/bin/btblocker";
         Restart = "on-failure";
         RestartSec = "5s";
 
