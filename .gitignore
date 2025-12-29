@@ -9,6 +9,10 @@
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.coverprofile
+coverage.out
+coverage*.out
+coverage.html
+coverage*.html
 
 # Logs and temp files
 *.log
