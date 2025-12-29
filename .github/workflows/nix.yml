@@ -37,6 +37,10 @@ jobs:
         run: |
           nix build .#btblocker --print-build-logs
 
+      - name: Push to Cachix
+        run: |
+          nix path-info .#btblocker --json | jq -r '.[].path' | cachix push btblocker
+
       - name: Show package info
         run: |
           nix path-info .#btblocker
