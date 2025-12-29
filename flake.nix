@@ -1,6 +1,16 @@
 {
   description = "BitTorrent Blocker - High-performance DPI-based BitTorrent traffic blocker";
 
+  # Binary cache configuration - users automatically get pre-built binaries
+  nixConfig = {
+    extra-substituters = [
+      "https://btblocker.cachix.org"
+    ];
+    extra-trusted-public-keys = [
+      "btblocker.cachix.org-1:5ER23eujq+x4QtEDoQEcXP5XD57F8RA/nXMtT0Hphk="
+    ];
+  };
+
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
