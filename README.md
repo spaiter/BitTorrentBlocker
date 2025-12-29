@@ -77,7 +77,54 @@ internal/blocker/
 
 ## Installation
 
-### NixOS / Nix (Recommended)
+### Binary Releases (Recommended for Production)
+
+Download pre-built binaries for your platform:
+
+```bash
+# Linux (amd64)
+curl -LO https://github.com/spaiter/BitTorrentBlocker/releases/latest/download/btblocker-VERSION-linux-amd64.tar.gz
+tar -xzf btblocker-VERSION-linux-amd64.tar.gz
+sudo mv btblocker-VERSION-linux-amd64 /usr/local/bin/btblocker
+sudo chmod +x /usr/local/bin/btblocker
+
+# Verify checksum
+curl -LO https://github.com/spaiter/BitTorrentBlocker/releases/latest/download/btblocker-VERSION-linux-amd64.tar.gz.sha256
+sha256sum -c btblocker-VERSION-linux-amd64.tar.gz.sha256
+```
+
+**Available platforms:** Linux (amd64, arm64, arm), Windows (amd64, arm64), macOS (amd64, arm64)
+
+See all releases: https://github.com/spaiter/BitTorrentBlocker/releases
+
+### Docker
+
+```bash
+# Pull latest image
+docker pull ghcr.io/spaiter/btblocker:latest
+
+# Run with required capabilities
+docker run --rm \
+  --cap-add=NET_ADMIN \
+  --network host \
+  ghcr.io/spaiter/btblocker:latest
+
+# Docker Compose
+cat > docker-compose.yml << EOF
+version: '3.8'
+services:
+  btblocker:
+    image: ghcr.io/spaiter/btblocker:latest
+    cap_add:
+      - NET_ADMIN
+    network_mode: host
+    restart: unless-stopped
+EOF
+
+docker-compose up -d
+```
+
+### NixOS / Nix
 
 ```bash
 # Try it without installing
@@ -88,6 +135,8 @@ nix profile install github:spaiter/BitTorrentBlocker
 
 # Or add to your NixOS configuration (see docs/NIX_INSTALLATION.md)
 ```
+
+Binary cache available at https://btblocker.cachix.org
 
 See [NIX_INSTALLATION.md](docs/NIX_INSTALLATION.md) for complete NixOS installation guide.
 
