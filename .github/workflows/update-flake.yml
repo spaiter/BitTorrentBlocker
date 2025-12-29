@@ -68,14 +68,12 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           if ! git diff --quiet flake.nix; then
+            CORRECT_HASH="${{ steps.calc-hash.outputs.correct_hash }}"
             git add flake.nix
-            git commit -m "Update flake.nix vendorHash [skip-flake-update]
-
-Automatically updated vendorHash to ${{ steps.calc-hash.outputs.correct_hash }}
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
+            git commit -m "Update flake.nix vendorHash [skip-flake-update]" \
+              -m "Automatically updated vendorHash to ${CORRECT_HASH}" \
+              -m "🤖 Generated with [Claude Code](https://claude.com/claude-code)" \
+              -m "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
             git push
           else
             echo "No changes to commit"
