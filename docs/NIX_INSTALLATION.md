@@ -144,7 +144,7 @@ Or add to your Nix configuration:
 ```nix
 nix.settings = {
   substituters = [ "https://btblocker.cachix.org" ];
-  trusted-public-keys = [ "btblocker.cachix.org-1:YOUR_PUBLIC_KEY_HERE" ];
+  trusted-public-keys = [ "btblocker.cachix.org-1:5ER23eujq+x4QtEDoQEcXP5XD57F8RA/nXMtT0Hphk=" ];
 };
 ```
 

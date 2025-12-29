@@ -76,7 +76,7 @@ Add to `/etc/nixos/configuration.nix`:
     ];
     trusted-public-keys = [
       "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
-      "btblocker.cachix.org-1:YOUR_PUBLIC_KEY_HERE"
+      "btblocker.cachix.org-1:5ER23eujq+x4QtEDoQEcXP5XD57F8RA/nXMtT0Hphk="
     ];
   };
 }
@@ -95,7 +95,7 @@ Add to your `flake.nix`:
 {
   nixConfig = {
     extra-substituters = [ "https://btblocker.cachix.org" ];
-    extra-trusted-public-keys = [ "btblocker.cachix.org-1:YOUR_PUBLIC_KEY_HERE" ];
+    extra-trusted-public-keys = [ "btblocker.cachix.org-1:5ER23eujq+x4QtEDoQEcXP5XD57F8RA/nXMtT0Hphk=" ];
   };
 }
 ```
