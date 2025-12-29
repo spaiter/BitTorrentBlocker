@@ -1,5 +1,10 @@
 # BitTorrent Blocker
 
+[![CI](https://github.com/spaiter/BitTorrentBlocker/actions/workflows/ci.yml/badge.svg)](https://github.com/spaiter/BitTorrentBlocker/actions/workflows/ci.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/spaiter/BitTorrentBlocker)](https://goreportcard.com/report/github.com/spaiter/BitTorrentBlocker)
+[![codecov](https://codecov.io/gh/spaiter/BitTorrentBlocker/branch/main/graph/badge.svg)](https://codecov.io/gh/spaiter/BitTorrentBlocker)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 A high-performance Go library and CLI tool for detecting and blocking BitTorrent traffic using Deep Packet Inspection (DPI). Combines techniques from nDPI, libtorrent, Suricata, and Sing-box to provide comprehensive BitTorrent protocol detection.
 
 ## Features
