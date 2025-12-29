@@ -170,7 +170,7 @@ The blocker employs 11 complementary detection techniques, ordered by specificit
 ### Run Tests
 
 ```bash
-# Run all tests
+# Run all unit tests
 make test
 
 # Run with coverage
@@ -181,17 +181,24 @@ go test ./internal/blocker -v
 
 # Run benchmarks
 go test ./internal/blocker -bench=. -benchmem
+
+# Run integration tests (tests full packet processing pipeline)
+go test -tags=integration ./test/integration -v
+
+# Run integration tests with Docker
+cd test/integration && docker-compose up --build
 ```
 
 ### Test Coverage
 
 The project includes comprehensive test coverage:
 
+**Unit Tests:**
 - **76%+** code coverage of blocker package
 - **165+** test cases covering all detection methods
 - **16** performance benchmarks
 
-Test files:
+Unit test files:
 - `analyzer_test.go` - Multi-layer packet analysis tests (13 test cases)
 - `detectors_test.go` - Protocol detection tests (117 test cases)
   - MSE/PE encryption detection tests
@@ -203,6 +210,15 @@ Test files:
   - UDP tracker, uTP, DHT, SOCKS tests
 - `config_test.go` - Configuration validation tests (10 test cases)
 - `ipban_test.go` - IP banning mechanism tests (26 test cases)
+
+**Integration Tests:**
+- End-to-end packet processing pipeline tests
+- Real-world traffic pattern simulation
+- False positive rate testing (0% target)
+- Performance benchmarking (10K+ packets)
+- Multi-layer detection verification
+
+See [test/integration/README.md](test/integration/README.md) for details.
 
 ### Build
 

@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  # Integration test runner
+  tests:
+    build:
+      context: ../..
+      dockerfile: test/integration/Dockerfile
+    container_name: btblocker-integration-tests
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    privileged: true
+    volumes:
+      - ../..:/app
+      - /lib/modules:/lib/modules:ro
+    environment:
+      - GO_TEST_TAGS=integration
+      - COVERAGE_OUTPUT=/app/coverage-integration.out
+    command: >
+      sh -c "
+        echo 'Running integration tests...'
+        go test -tags=integration ./test/integration -v -coverprofile=/app/coverage-integration.out
+      "
+    networks:
+      - test-network
+
+networks:
+  test-network:
+    driver: bridge
