@@ -1,13 +1,11 @@
 {
   description = "BitTorrent Blocker - High-performance DPI-based BitTorrent traffic blocker";
 
-  # Binary cache configuration - users automatically get pre-built binaries
+  # Binary cache configuration - users get pre-built binaries from Cachix
+  # Nix will prompt to trust the cache on first use
   nixConfig = {
     extra-substituters = [
       "https://btblocker.cachix.org"
-    ];
-    extra-trusted-public-keys = [
-      "btblocker.cachix.org-1:5ER23eujq+x4QtEDoQEcXP5XD57F8RA/nXMtT0Hphk="
     ];
   };
 
