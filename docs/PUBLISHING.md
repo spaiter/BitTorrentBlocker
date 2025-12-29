@@ -77,9 +77,9 @@ docker run --rm \
   ghcr.io/spaiter/btblocker:latest
 ```
 
-**Docker Compose Example:**
+**Docker Compose Example (Compose V2):**
 ```yaml
-version: '3.8'
+# compose.yml
 services:
   btblocker:
     image: ghcr.io/spaiter/btblocker:latest
@@ -88,6 +88,8 @@ services:
     network_mode: host
     restart: unless-stopped
 ```
+
+Run with: `docker compose up -d`
 
 ### 3. Nix - Cachix Binary Cache
 

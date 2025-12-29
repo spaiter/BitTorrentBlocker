@@ -109,9 +109,8 @@ docker run --rm \
   --network host \
   ghcr.io/spaiter/btblocker:latest
 
-# Docker Compose
-cat > docker-compose.yml << EOF
-version: '3.8'
+# Docker Compose (Compose V2 - built into Docker)
+cat > compose.yml << EOF
 services:
   btblocker:
     image: ghcr.io/spaiter/btblocker:latest
@@ -121,7 +120,7 @@ services:
     restart: unless-stopped
 EOF
 
-docker-compose up -d
+docker compose up -d
 ```
 
 ### NixOS / Nix
