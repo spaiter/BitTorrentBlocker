@@ -174,3 +174,134 @@ func ShannonEntropy(data []byte) float64 {
 	}
 	return entropy
 }
+
+// CheckMSEEncryption detects Message Stream Encryption (MSE/PE) handshake
+// This is critical for detecting encrypted BitTorrent traffic
+func CheckMSEEncryption(payload []byte) bool {
+	// MSE handshake structure:
+	// 1. 96-byte DH public key
+	// 2. 0-512 bytes random padding
+	// 3. 96-byte DH response key
+	// 4. Verification Constant (VC): 8 zero bytes
+	// 5. crypto_provide/select (4 bytes)
+
+	// Minimum: 96-byte DH key + VC (8 bytes)
+	if len(payload) < 104 {
+		return false
+	}
+
+	// Strategy 1: Look for Verification Constant (8 consecutive zero bytes)
+	// Search window: bytes 96-628 (96 + max padding 512 + 20)
+	searchEnd := 628
+	if len(payload) < searchEnd {
+		searchEnd = len(payload)
+	}
+
+	for i := 96; i <= searchEnd-8 && i < len(payload)-8; i++ {
+		// Check for VC (8 consecutive zero bytes)
+		isVC := true
+		for j := 0; j < 8; j++ {
+			if payload[i+j] != 0x00 {
+				isVC = false
+				break
+			}
+		}
+		if isVC {
+			return true
+		}
+	}
+
+	// Strategy 2: Check if first 96 bytes have high entropy (DH public key characteristic)
+	if len(payload) >= 96 {
+		entropy := ShannonEntropy(payload[0:96])
+		// DH public keys should have high entropy (> 7.0)
+		// Combined with connection start = likely MSE
+		if entropy > 7.0 {
+			return true
+		}
+	}
+
+	return false
+}
+
+// CheckLSD detects Local Service Discovery (LSD) traffic
+// LSD uses multicast to discover peers on the local network
+func CheckLSD(payload []byte, destIP string, destPort uint16) bool {
+	// Check if destined to LSD multicast address and port
+	if destPort == 6771 {
+		if destIP == "239.192.152.143" || destIP == "ff15::efc0:988f" {
+			return true
+		}
+	}
+
+	// Check for BT-SEARCH HTTP-style message (LSD announce format)
+	if bytes.Contains(payload, []byte("BT-SEARCH * HTTP/1.1")) {
+		return true
+	}
+
+	if bytes.Contains(payload, []byte("Host: 239.192.152.143:6771")) {
+		return true
+	}
+
+	// LSD messages must contain both Infohash and Port
+	if bytes.Contains(payload, []byte("Infohash: ")) &&
+		bytes.Contains(payload, []byte("Port: ")) {
+		return true
+	}
+
+	return false
+}
+
+// CheckExtendedMessage detects BitTorrent Extension Protocol messages (BEP 10)
+// Message ID 20 (0x14) indicates extended protocol usage
+func CheckExtendedMessage(payload []byte) bool {
+	// Minimum: 4-byte length + 1-byte msg ID + 1-byte ext ID + 1-byte bencode
+	if len(payload) < 7 {
+		return false
+	}
+
+	// BitTorrent messages have 4-byte length prefix
+	// Check for message ID 20 (0x14) at offset 4
+	if payload[4] == 0x14 {
+		// Extended message should be followed by extended ID and bencode dictionary
+		// Extended ID 0 = handshake (always starts with 'd')
+		if len(payload) > 6 && payload[6] == 'd' {
+			return true
+		}
+		// Message ID 20 alone is highly specific to BitTorrent
+		return true
+	}
+
+	return false
+}
+
+// CheckFASTExtension detects FAST Extension messages (BEP 6)
+// Message IDs 13-17 (0x0D-0x11) are FAST extension specific
+func CheckFASTExtension(payload []byte) bool {
+	// Minimum: 4-byte length + 1-byte msg ID
+	if len(payload) < 5 {
+		return false
+	}
+
+	// Check message ID
+	msgID := payload[4]
+
+	// FAST extension message IDs: 13-17 (0x0D-0x11)
+	if msgID >= 0x0D && msgID <= 0x11 {
+		// Validate message length matches expected for each type
+		msgLen := binary.BigEndian.Uint32(payload[0:4])
+
+		switch msgID {
+		case 0x0D, 0x11: // Suggest Piece (13), Allowed Fast (17) - 5 bytes payload
+			return msgLen == 5
+		case 0x0E, 0x0F: // Have All (14), Have None (15) - 1 byte payload
+			return msgLen == 1
+		case 0x10: // Reject Request (16) - 13 bytes payload
+			return msgLen == 13
+		}
+		// Unknown FAST message, still likely BitTorrent
+		return true
+	}
+
+	return false
+}

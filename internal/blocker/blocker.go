@@ -96,8 +96,8 @@ func (b *Blocker) Start(ctx context.Context) error {
 			return 0
 		}
 
-		// Analyze packet
-		result := b.analyzer.AnalyzePacket(appLayer, isUDP)
+		// Analyze packet with destination info for LSD detection
+		result := b.analyzer.AnalyzePacketEx(appLayer, isUDP, remoteIP, dstPort)
 
 		// Apply verdict
 		if result.ShouldBlock {

@@ -38,28 +38,139 @@ var BTSignatures = [][]byte{
 	[]byte("7:added.f"), // Flags
 	[]byte("7:dropped"), // Dropped peers
 	[]byte("6:added6"),  // IPv6 peers
+	[]byte("8:added6.f"), // IPv6 peer flags
+	[]byte("8:dropped6"), // IPv6 dropped peers
 	[]byte("1:m"),       // Extensions dictionary
 
-	// 4. Text / HTTP Trackers
+	// 4. Extension Protocol (BEP 10)
+	[]byte("ut_metadata"),    // Metadata extension
+	[]byte("12:ut_holepunch"), // NAT hole punching
+	[]byte("11:upload_only"),  // Upload-only mode
+	[]byte("10:share_mode"),   // Share mode
+	[]byte("9:lt_donthave"),   // Piece removal
+	[]byte("11:LT_metadata"),  // Legacy metadata
+	[]byte("6:yourip"),        // External IP
+	[]byte("13:metadata_size"), // Metadata size
+	[]byte("8:msg_type"),      // Metadata message type
+	[]byte("10:total_size"),   // Total metadata size
+	[]byte("4:reqq"),          // Request queue size
+
+	// 5. Text / HTTP Trackers
 	[]byte("magnet:?"),
+	[]byte("magnet:?xt=urn:btih:"),  // v1 info hash
+	[]byte("magnet:?xt=urn:btmh:"),  // v2 multihash
 	[]byte("udp://tracker."),
 	[]byte("announce.php?passkey="),
 	[]byte("info_hash"),
-	[]byte("find_node"),
+	[]byte("peer_id="),
+	[]byte("uploaded="),
+	[]byte("downloaded="),
+	[]byte("supportcrypto="),
+	[]byte("requirecrypto="),
+	[]byte("cryptoport="),
 
-	// 5. DHT Bencode Keys (from suricata)
+	// 6. DHT Bencode Keys (from suricata)
 	[]byte("d1:ad2:id20:"),
 	[]byte("d1:rd2:id20:"),
 	[]byte("1:y1:q"), // Query Type
 	[]byte("1:y1:r"), // Response Type
+	[]byte("find_node"),
+	[]byte("4:ping"),
+	[]byte("9:get_peers"),
+	[]byte("13:announce_peer"),
+	[]byte("3:put"),
+	[]byte("3:get"),
+	[]byte("5:token"),
+	[]byte("6:nodes6"),
+	[]byte("6:target"),
+
+	// 7. LSD (Local Service Discovery)
+	[]byte("BT-SEARCH * HTTP/1.1"),
+	[]byte("Host: 239.192.152.143:6771"),
+	[]byte("Infohash: "),
+
+	// 8. MSE/PE (Message Stream Encryption)
+	[]byte("keyA"),
+	[]byte("keyB"),
+	[]byte("req1"),
+	[]byte("req2"),
+
+	// 9. BitTorrent v2
+	[]byte("12:piece layers"),
+	[]byte("9:file tree"),
+	[]byte("12:pieces root"),
 }
 
 // PeerIDPrefixes contains known BitTorrent client PeerID prefixes
+// Format: Azureus-style uses "-XX####-" where XX is client code, #### is version
 var PeerIDPrefixes = [][]byte{
+	// Original 6 (keep existing)
 	[]byte("-qB"), // qBittorrent
 	[]byte("-TR"), // Transmission
-	[]byte("-UT"), // uTorrent
-	[]byte("-LT"), // Libtorrent (Deluge)
+	[]byte("-UT"), // µTorrent
+	[]byte("-LT"), // libtorrent (rTorrent, Deluge)
 	[]byte("-DE"), // Deluge
 	[]byte("-BM"), // BitComet
+
+	// Major clients (high priority additions)
+	[]byte("-AZ"), // Azureus/Vuze
+	[]byte("-lt"), // libTorrent (rTorrent) - lowercase!
+	[]byte("-KT"), // KTorrent
+	[]byte("-FW"), // FrostWire
+	[]byte("-XL"), // Xunlei (Thunder)
+	[]byte("-SD"), // Thunder (Xunlei) - alternative
+	[]byte("-UM"), // µTorrent Mac
+	[]byte("-KG"), // KGet
+
+	// Additional popular clients
+	[]byte("-BB"), // BitBuddy
+	[]byte("-BC"), // BitComet (alternative)
+	[]byte("-BR"), // BitRocket
+	[]byte("-BS"), // BTSlave
+	[]byte("-BX"), // Bittorrent X
+	[]byte("-CD"), // Enhanced CTorrent
+	[]byte("-CT"), // CTorrent
+	[]byte("-DP"), // Propagate Data Client
+	[]byte("-EB"), // EBit
+	[]byte("-ES"), // Electric Sheep
+	[]byte("-FT"), // FoxTorrent
+	[]byte("-FX"), // Freebox BitTorrent
+	[]byte("-GS"), // GSTorrent
+	[]byte("-HL"), // Halite
+	[]byte("-HN"), // Hydranode
+	[]byte("-LH"), // LH-ABC
+	[]byte("-LP"), // Lphant
+	[]byte("-LW"), // LimeWire
+	[]byte("-MO"), // MonoTorrent
+	[]byte("-MP"), // MooPolice
+	[]byte("-MR"), // Miro
+	[]byte("-MT"), // MoonlightTorrent
+	[]byte("-NX"), // Net Transport
+	[]byte("-PD"), // Pando
+	[]byte("-QD"), // QQDownload
+	[]byte("-QT"), // Qt 4 Torrent
+	[]byte("-RT"), // Retriever
+	[]byte("-SB"), // ~Swiftbit
+	[]byte("-SS"), // SwarmScope
+	[]byte("-ST"), // SymTorrent
+	[]byte("-TN"), // TorrentDotNET
+	[]byte("-TT"), // TuoTu
+	[]byte("-UL"), // uLeecher
+	[]byte("-WD"), // Web Downloader
+	[]byte("-WY"), // FireTorrent
+	[]byte("-XT"), // XanTorrent
+	[]byte("-XX"), // Xtorrent
+	[]byte("-ZT"), // ZipTorrent
+	[]byte("-FG"), // FlashGet
+
+	// Non-Azureus style prefixes
+	[]byte("M4-"),    // Mainline (official BitTorrent)
+	[]byte("T0"),     // BitTornado
+	[]byte("OP"),     // Opera
+	[]byte("XBT"),    // XBT Client
+	[]byte("exbc"),   // BitComet (non-Azureus)
+	[]byte("FUTB"),   // FuTorrent
+	[]byte("Plus"),   // Plus! v2
+	[]byte("turbo"),  // Turbo BT
+	[]byte("btpd"),   // BT Protocol Daemon
 }

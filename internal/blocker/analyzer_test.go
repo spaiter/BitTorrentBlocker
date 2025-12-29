@@ -20,7 +20,7 @@ func TestAnalyzer_AnalyzePacket(t *testing.T) {
 			payload:     []byte("\x13BitTorrent protocol\x00\x00\x00\x00\x00\x00\x00\x00"),
 			isUDP:       false,
 			shouldBlock: true,
-			reason:      "BitTorrent Signature/PEX",
+			reason:      "BitTorrent Signature",
 		},
 		{
 			name: "UDP tracker connect",
@@ -38,7 +38,7 @@ func TestAnalyzer_AnalyzePacket(t *testing.T) {
 			payload:     []byte("d1:ad2:id20:abcdefghij0123456789e1:q4:ping1:t2:aa1:y1:qe"),
 			isUDP:       true,
 			shouldBlock: true,
-			reason:      "BitTorrent Signature/PEX", // Contains "1:y1:q" signature
+			reason:      "BitTorrent Signature", // Contains "1:y1:q" signature
 		},
 		{
 			name: "uTP packet",
@@ -154,8 +154,8 @@ func TestAnalyzer_AnalyzePacketWithSOCKS5Unwrapping(t *testing.T) {
 	}
 
 	// Should detect BitTorrent signature inside (contains "1:y1:q")
-	if result.Reason != "BitTorrent Signature/PEX" {
-		t.Errorf("AnalyzePacket() Reason = %v, want BitTorrent Signature/PEX", result.Reason)
+	if result.Reason != "BitTorrent Signature" {
+		t.Errorf("AnalyzePacket() Reason = %v, want BitTorrent Signature", result.Reason)
 	}
 }
 
