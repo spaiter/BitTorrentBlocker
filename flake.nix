@@ -84,11 +84,11 @@
             echo "  make run    - Run the blocker (requires root)"
           '';
         };
-
-        # NixOS module for easy system integration
-        nixosModules.default = import ./test/e2e/nixos-module.nix;
       }
     ) // {
+      # NixOS module for easy system integration
+      nixosModules.default = import ./test/e2e/nixos-module.nix;
+
       # Overlay for adding to your own NixOS configuration
       overlays.default = final: prev: {
         btblocker = self.packages.${prev.system}.btblocker;
