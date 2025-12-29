@@ -131,10 +131,12 @@ jobs:
         run: |
           if [ "${{ matrix.goos }}" = "windows" ]; then
             ARCHIVE="${{ steps.zip_windows.outputs.archive_name }}"
+            # Windows: use certutil or PowerShell for checksum
+            powershell -Command "(Get-FileHash -Algorithm SHA256 '$ARCHIVE').Hash.ToLower() + '  $ARCHIVE'" > "${ARCHIVE}.sha256"
           else
             ARCHIVE="${{ steps.tarball_unix.outputs.archive_name }}"
+            sha256sum "$ARCHIVE" > "${ARCHIVE}.sha256"
           fi
-          sha256sum "$ARCHIVE" > "${ARCHIVE}.sha256"
         shell: bash
 
       - name: Upload to release
@@ -265,7 +267,7 @@ jobs:
   publish-summary:
     name: Publish Summary
     runs-on: ubuntu-latest
-    needs: [build-binaries, build-docker, update-homebrew]
+    needs: [build-binaries, build-docker]
     if: always()
 
     steps:
