@@ -14,7 +14,12 @@ in {
 
     package = mkOption {
       type = types.package;
-      default = pkgs.btblocker;
+      default = pkgs.btblocker or (throw ''
+        The btblocker package is not available in pkgs.
+        Please either:
+          1. Apply the btblocker overlay: nixpkgs.overlays = [ inputs.bittorrent-blocker.overlays.default ];
+          2. Set the package explicitly: services.btblocker.package = inputs.bittorrent-blocker.packages.''${system}.btblocker;
+      '');
       defaultText = literalExpression "pkgs.btblocker";
       description = "The btblocker package to use";
     };

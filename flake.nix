@@ -30,8 +30,8 @@
 
             src = ./.;
 
-            # Go module dependencies hash
-            vendorHash = "sha256-kQfQXHJHGIPiKr5AFgmYr3M2m1NRdOUby5vm1qdu13s=";
+            # Vendor directory is committed, so no hash needed
+            vendorHash = null;
 
             # Specify Go version
             buildInputs = with pkgs; [
