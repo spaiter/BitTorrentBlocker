@@ -305,3 +305,49 @@ func CheckFASTExtension(payload []byte) bool {
 
 	return false
 }
+
+// CheckHTTPBitTorrent detects HTTP-based BitTorrent protocols
+// Includes WebSeed, Bitcomet persistent seed, and User-Agent detection
+func CheckHTTPBitTorrent(payload []byte) bool {
+	// Minimum HTTP request size
+	if len(payload) < 16 {
+		return false
+	}
+
+	// Must be HTTP GET request
+	if !bytes.HasPrefix(payload, []byte("GET ")) {
+		return false
+	}
+
+	s := string(payload)
+
+	// 1. WebSeed Protocol (BEP 19)
+	// Format: GET /webseed?info_hash=<hash>&piece=<num>
+	if strings.Contains(s, "GET /webseed?info_hash=") {
+		return true
+	}
+
+	// 2. Bitcomet Persistent Seed Protocol
+	// Format: GET /data?fid=<file_id>&size=<size>
+	if strings.Contains(s, "GET /data?fid=") && strings.Contains(s, "&size=") {
+		return true
+	}
+
+	// 3. User-Agent Detection (Common BitTorrent clients)
+	// Check for known BitTorrent client User-Agent strings
+	userAgentPatterns := []string{
+		"User-Agent: Azureus",
+		"User-Agent: BitTorrent",
+		"User-Agent: BTWebClient",
+		"User-Agent: Shareaza",
+		"User-Agent: FlashGet",
+	}
+
+	for _, pattern := range userAgentPatterns {
+		if strings.Contains(s, pattern) {
+			return true
+		}
+	}
+
+	return false
+}

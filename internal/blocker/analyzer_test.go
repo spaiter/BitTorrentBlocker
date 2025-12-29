@@ -104,6 +104,20 @@ func TestAnalyzer_AnalyzePacket(t *testing.T) {
 			shouldBlock: false,
 			reason:      "",
 		},
+		{
+			name:        "HTTP BitTorrent WebSeed",
+			payload:     []byte("GET /webseed?info_hash=ABCD1234 HTTP/1.1\r\nHost: seed.example.com\r\n\r\n"),
+			isUDP:       false,
+			shouldBlock: true,
+			reason:      "HTTP BitTorrent Protocol",
+		},
+		{
+			name:        "HTTP BitTorrent User-Agent",
+			payload:     []byte("GET /announce HTTP/1.1\r\nUser-Agent: Azureus 5.7\r\n\r\n"),
+			isUDP:       false,
+			shouldBlock: true,
+			reason:      "HTTP BitTorrent Protocol",
+		},
 	}
 
 	for _, tt := range tests {

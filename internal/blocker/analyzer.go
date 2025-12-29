@@ -91,7 +91,15 @@ func (a *Analyzer) AnalyzePacketEx(payload []byte, isUDP bool, destIP string, de
 		}
 	}
 
-	// 7. Signature analysis (PEX, DHT Keys, Handshakes, Extensions)
+	// 7. HTTP-based BitTorrent detection (WebSeed, Bitcomet, User-Agent)
+	if !isUDP && CheckHTTPBitTorrent(processingPayload) {
+		return AnalysisResult{
+			ShouldBlock: true,
+			Reason:      "HTTP BitTorrent Protocol",
+		}
+	}
+
+	// 8. Signature analysis (PEX, DHT Keys, Handshakes, Extensions)
 	if CheckSignatures(processingPayload) {
 		return AnalysisResult{
 			ShouldBlock: true,
@@ -99,7 +107,7 @@ func (a *Analyzer) AnalyzePacketEx(payload []byte, isUDP bool, destIP string, de
 		}
 	}
 
-	// 8. uTP Protocol Analysis (Sing-box logic)
+	// 9. uTP Protocol Analysis (Sing-box logic)
 	if isUDP && CheckUTPRobust(processingPayload) {
 		return AnalysisResult{
 			ShouldBlock: true,
@@ -107,7 +115,7 @@ func (a *Analyzer) AnalyzePacketEx(payload []byte, isUDP bool, destIP string, de
 		}
 	}
 
-	// 9. Structural DHT analysis (Suricata logic)
+	// 10. Structural DHT analysis (Suricata logic)
 	if CheckBencodeDHT(processingPayload) {
 		return AnalysisResult{
 			ShouldBlock: true,
@@ -115,7 +123,7 @@ func (a *Analyzer) AnalyzePacketEx(payload []byte, isUDP bool, destIP string, de
 		}
 	}
 
-	// 10. Entropy check (for fully encrypted traffic - last resort)
+	// 11. Entropy check (for fully encrypted traffic - last resort)
 	if len(processingPayload) > a.config.MinPayloadSize {
 		entropy := ShannonEntropy(processingPayload)
 		if entropy > a.config.EntropyThreshold {

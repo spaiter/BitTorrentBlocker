@@ -808,3 +808,131 @@ func BenchmarkCheckFASTExtension(b *testing.B) {
 		CheckFASTExtension(payload)
 	}
 }
+
+func TestCheckHTTPBitTorrent(t *testing.T) {
+	tests := []struct {
+		name     string
+		payload  []byte
+		expected bool
+	}{
+		// WebSeed Protocol Tests (BEP 19)
+		{
+			name:     "WebSeed request valid",
+			payload:  []byte("GET /webseed?info_hash=0123456789ABCDEF0123456789ABCDEF01234567&piece=0 HTTP/1.1\r\nHost: webseed.example.com\r\n\r\n"),
+			expected: true,
+		},
+		{
+			name:     "WebSeed request minimal",
+			payload:  []byte("GET /webseed?info_hash=abc123 HTTP/1.1\r\n\r\n"),
+			expected: true,
+		},
+		{
+			name:     "WebSeed with additional parameters",
+			payload:  []byte("GET /webseed?info_hash=ABC&piece=5&offset=16384 HTTP/1.1\r\n\r\n"),
+			expected: true,
+		},
+
+		// Bitcomet Persistent Seed Tests
+		{
+			name:     "Bitcomet persistent seed valid",
+			payload:  []byte("GET /data?fid=12345&size=1048576 HTTP/1.1\r\nHost: peer.example.com\r\n\r\n"),
+			expected: true,
+		},
+		{
+			name:     "Bitcomet persistent seed with additional params",
+			payload:  []byte("GET /data?fid=abcdef&size=524288&offset=0 HTTP/1.1\r\n\r\n"),
+			expected: true,
+		},
+		{
+			name:     "Bitcomet persistent seed missing size parameter",
+			payload:  []byte("GET /data?fid=12345 HTTP/1.1\r\n\r\n"),
+			expected: false,
+		},
+		{
+			name:     "Bitcomet persistent seed missing fid parameter",
+			payload:  []byte("GET /data?size=1048576 HTTP/1.1\r\n\r\n"),
+			expected: false,
+		},
+
+		// User-Agent Detection Tests
+		{
+			name:     "User-Agent Azureus",
+			payload:  []byte("GET /announce HTTP/1.1\r\nHost: tracker.example.com\r\nUser-Agent: Azureus 5.7.6.0\r\n\r\n"),
+			expected: true,
+		},
+		{
+			name:     "User-Agent BitTorrent",
+			payload:  []byte("GET /announce HTTP/1.1\r\nUser-Agent: BitTorrent/7.10.5\r\n\r\n"),
+			expected: true,
+		},
+		{
+			name:     "User-Agent BTWebClient",
+			payload:  []byte("GET /file HTTP/1.1\r\nUser-Agent: BTWebClient/1.0\r\n\r\n"),
+			expected: true,
+		},
+		{
+			name:     "User-Agent Shareaza",
+			payload:  []byte("GET /download HTTP/1.1\r\nUser-Agent: Shareaza 2.7.10.2\r\n\r\n"),
+			expected: true,
+		},
+		{
+			name:     "User-Agent FlashGet",
+			payload:  []byte("GET /file HTTP/1.1\r\nUser-Agent: FlashGet 3.7\r\n\r\n"),
+			expected: true,
+		},
+
+		// Negative Tests
+		{
+			name:     "Normal HTTP GET",
+			payload:  []byte("GET / HTTP/1.1\r\nHost: example.com\r\nUser-Agent: Mozilla/5.0\r\n\r\n"),
+			expected: false,
+		},
+		{
+			name:     "Normal HTTP GET with User-Agent Chrome",
+			payload:  []byte("GET /page HTTP/1.1\r\nUser-Agent: Chrome/90.0\r\n\r\n"),
+			expected: false,
+		},
+		{
+			name:     "HTTP POST request",
+			payload:  []byte("POST /api HTTP/1.1\r\nHost: example.com\r\n\r\n"),
+			expected: false,
+		},
+		{
+			name:     "Too short payload",
+			payload:  []byte("GET /"),
+			expected: false,
+		},
+		{
+			name:     "Empty payload",
+			payload:  []byte{},
+			expected: false,
+		},
+		{
+			name:     "Non-HTTP payload",
+			payload:  []byte("\x13BitTorrent protocol"),
+			expected: false,
+		},
+		{
+			name:     "WebSeed-like but not GET",
+			payload:  []byte("POST /webseed?info_hash=abc HTTP/1.1\r\n\r\n"),
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := CheckHTTPBitTorrent(tt.payload)
+			if result != tt.expected {
+				t.Errorf("CheckHTTPBitTorrent() = %v, want %v", result, tt.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkCheckHTTPBitTorrent(b *testing.B) {
+	payload := []byte("GET /webseed?info_hash=0123456789ABCDEF0123456789ABCDEF01234567&piece=0 HTTP/1.1\r\nHost: webseed.example.com\r\n\r\n")
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		CheckHTTPBitTorrent(payload)
+	}
+}

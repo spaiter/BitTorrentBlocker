@@ -99,6 +99,16 @@ var BTSignatures = [][]byte{
 	[]byte("12:piece layers"),
 	[]byte("9:file tree"),
 	[]byte("12:pieces root"),
+
+	// 10. HTTP-based BitTorrent (from nDPI)
+	[]byte("GET /webseed?info_hash="),   // WebSeed protocol
+	[]byte("GET /data?fid="),             // Bitcomet persistent seed
+	[]byte("&size="),                     // Bitcomet size parameter
+	[]byte("User-Agent: Azureus"),        // Azureus/Vuze client
+	[]byte("User-Agent: BitTorrent"),     // Official BitTorrent client
+	[]byte("User-Agent: BTWebClient"),    // BitTorrent web client
+	[]byte("User-Agent: Shareaza"),       // Shareaza client
+	[]byte("User-Agent: FlashGet"),       // FlashGet client
 }
 
 // PeerIDPrefixes contains known BitTorrent client PeerID prefixes
