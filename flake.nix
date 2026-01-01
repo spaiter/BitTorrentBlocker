@@ -18,7 +18,7 @@
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
-        version = "0.7.1";
+        version = "dev";  # Replaced by CI/CD pipeline during builds
       in
       {
         packages = {
