@@ -4,6 +4,11 @@
 
 set -e
 
+# Add Go bin directory to PATH if it exists
+if [ -d "$HOME/go/bin" ]; then
+    export PATH="$HOME/go/bin:$PATH"
+fi
+
 echo "🔍 Running pre-commit checks..."
 
 # Colors for output

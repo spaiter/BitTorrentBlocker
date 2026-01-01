@@ -2,8 +2,6 @@
 run:
   timeout: 5m
   tests: true
-  skip-dirs:
-    - vendor
   modules-download-mode: readonly
 
 linters:
@@ -24,11 +22,6 @@ linters:
     - unparam
     - unconvert
     - prealloc
-  disable:
-    - structcheck  # deprecated
-    - varcheck     # deprecated
-    - deadcode     # deprecated
-    - exportloopref  # replaced by copyloopvar
 
 linters-settings:
   gocyclo:
@@ -47,6 +40,8 @@ linters-settings:
       - G304  # File path provided as taint input
 
 issues:
+  exclude-dirs:
+    - vendor
   exclude-rules:
     # Exclude some linters from running on tests
     - path: _test\.go
@@ -64,6 +59,14 @@ issues:
     - path: test/
       linters:
         - lll
+
+    # Allow high complexity in packet analyzer (multi-layer detection logic)
+    - path: analyzer\.go
+      text: "cyclomatic complexity.*AnalyzePacketEx"
+
+    # Allow high complexity in DHT node validation (detailed binary parsing)
+    - path: detectors\.go
+      text: "cyclomatic complexity.*CheckDHTNodes"
 
   max-issues-per-linter: 0
   max-same-issues: 0

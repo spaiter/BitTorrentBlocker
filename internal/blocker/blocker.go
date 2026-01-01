@@ -52,7 +52,7 @@ func (b *Blocker) Start(ctx context.Context) error {
 		verdict := nfqueue.NfAccept
 
 		if len(payload) == 0 {
-			b.nfq.SetVerdict(id, verdict)
+			_ = b.nfq.SetVerdict(id, verdict)
 			return 0
 		}
 
