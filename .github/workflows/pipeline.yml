@@ -143,137 +143,7 @@ jobs:
           args: --timeout=5m
 
   # ============================================================================
-  # STAGE 2: BUILD (only after tests pass)
-  # ============================================================================
-
-  build-binaries:
-    name: Build ${{ matrix.goos }}-${{ matrix.goarch }}
-    runs-on: ${{ matrix.os }}
-    needs: [test-unit, test-integration, test-e2e, lint]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-latest
-            goos: linux
-            goarch: amd64
-          - os: ubuntu-latest
-            goos: linux
-            goarch: arm64
-          - os: ubuntu-latest
-            goos: linux
-            goarch: arm
-          - os: windows-latest
-            goos: windows
-            goarch: amd64
-          - os: windows-latest
-            goos: windows
-            goarch: arm64
-          - os: macos-latest
-            goos: darwin
-            goarch: amd64
-          - os: macos-latest
-            goos: darwin
-            goarch: arm64
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.20'
-
-      - name: Install Linux dependencies
-        if: matrix.goos == 'linux' && matrix.os == 'ubuntu-latest'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libnetfilter-queue-dev libnfnetlink-dev
-
-          # Cross-compilation tools
-          if [ "${{ matrix.goarch }}" = "arm64" ]; then
-            sudo apt-get install -y gcc-aarch64-linux-gnu
-          elif [ "${{ matrix.goarch }}" = "arm" ]; then
-            sudo apt-get install -y gcc-arm-linux-gnueabihf
-          fi
-
-      - name: Get version (temporary)
-        id: version
-        run: |
-          # Use latest tag or 0.0.0
-          VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-          echo "version=${VERSION#v}" >> $GITHUB_OUTPUT
-          echo "tag=${VERSION}" >> $GITHUB_OUTPUT
-        shell: bash
-
-      - name: Build binary
-        env:
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
-          CGO_ENABLED: ${{ matrix.goos == 'linux' && '1' || '0' }}
-          VERSION: ${{ steps.version.outputs.version }}
-          COMMIT: ${{ github.sha }}
-        run: |
-          # Set CC for cross-compilation
-          if [ "${{ matrix.goos }}" = "linux" ] && [ "${{ matrix.goarch }}" = "arm64" ]; then
-            export CC=aarch64-linux-gnu-gcc
-          elif [ "${{ matrix.goos }}" = "linux" ] && [ "${{ matrix.goarch }}" = "arm" ]; then
-            export CC=arm-linux-gnueabihf-gcc
-          fi
-
-          # Build
-          BINARY_NAME="btblocker-${{ matrix.goos }}-${{ matrix.goarch }}"
-          if [ "${{ matrix.goos }}" = "windows" ]; then
-            BINARY_NAME="${BINARY_NAME}.exe"
-          fi
-
-          go build -v \
-            -ldflags="-s -w -X main.Version=${VERSION} -X main.Commit=${COMMIT}" \
-            -o "bin/${BINARY_NAME}" \
-            ./cmd/btblocker
-        shell: bash
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: binary-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: bin/*
-          retention-days: 1
-
-  build-nix:
-    name: Build Nix Package
-    runs-on: ubuntu-latest
-    needs: [test-unit, test-integration, test-e2e, lint]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Nix
-        uses: cachix/install-nix-action@v25
-        with:
-          extra_nix_config: |
-            experimental-features = nix-command flakes
-            accept-flake-config = true
-
-      - name: Setup Cachix
-        uses: cachix/cachix-action@v14
-        with:
-          name: btblocker
-          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-
-      - name: Build Nix package
-        run: nix build .#btblocker --print-build-logs
-
-      - name: Push to Cachix
-        run: |
-          nix path-info .#btblocker --closure-size --json | jq -r '.[].path' | cachix push btblocker
-
-  # ============================================================================
-  # STAGE 3: VERSION PREPARATION (determine version and update files)
+  # STAGE 2: VERSION PREPARATION (determine version and update files)
   # ============================================================================
 
   prepare-version:
@@ -365,10 +235,10 @@ jobs:
           git push
 
   # ============================================================================
-  # STAGE 4: BUILD (with updated version)
+  # STAGE 3: BUILD (with updated version)
   # ============================================================================
 
-  build-binaries-versioned:
+  build-binaries:
     name: Build ${{ matrix.goos }}-${{ matrix.goarch }}
     runs-on: ${{ matrix.os }}
     needs: [prepare-version]
@@ -456,7 +326,7 @@ jobs:
           path: bin/*
           retention-days: 1
 
-  build-nix-versioned:
+  build-nix:
     name: Build Nix Package
     runs-on: ubuntu-latest
     needs: [prepare-version]
@@ -488,13 +358,13 @@ jobs:
           nix path-info .#btblocker --closure-size --json | jq -r '.[].path' | cachix push btblocker
 
   # ============================================================================
-  # STAGE 5: CREATE RELEASE (after versioned builds)
+  # STAGE 4: CREATE RELEASE (after builds)
   # ============================================================================
 
   create-release:
     name: Create Release
     runs-on: ubuntu-latest
-    needs: [prepare-version, build-binaries-versioned, build-nix-versioned]
+    needs: [prepare-version, build-binaries, build-nix]
     if: needs.prepare-version.outputs.should_release == 'true'
     outputs:
       version: ${{ needs.prepare-version.outputs.version }}
@@ -526,7 +396,7 @@ jobs:
           echo "created=true" >> $GITHUB_OUTPUT
 
   # ============================================================================
-  # STAGE 6: PUBLISH (upload artifacts to release, push Docker)
+  # STAGE 5: PUBLISH (upload artifacts to release, push Docker)
   # ============================================================================
 
   publish-artifacts:
