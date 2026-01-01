@@ -54,6 +54,7 @@ issues:
         - gocyclo
         - gosec
         - goconst
+        - errcheck  # Allow ignoring errors in test code
 
     # Exclude magic number checks in tests
     - path: _test\.go

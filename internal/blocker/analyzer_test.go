@@ -155,8 +155,8 @@ func TestAnalyzer_AnalyzePacketWithSOCKS5Unwrapping(t *testing.T) {
 	dhtQuery := []byte("d1:ad2:id20:abcdefghij0123456789e1:q4:ping1:t2:aa1:y1:qe")
 	socks5Packet := []byte{
 		0x00, 0x00, 0x00, // Reserved + Fragment
-		0x01,             // ATYP: IPv4
-		192, 168, 1, 1,   // IP
+		0x01,           // ATYP: IPv4
+		192, 168, 1, 1, // IP
 		0x1A, 0xE1, // Port
 	}
 	socks5Packet = append(socks5Packet, dhtQuery...)

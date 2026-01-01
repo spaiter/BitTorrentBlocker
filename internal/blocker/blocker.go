@@ -11,11 +11,11 @@ import (
 
 // Blocker is the main BitTorrent blocker service
 type Blocker struct {
-	config      Config
-	analyzer    *Analyzer
-	banManager  *IPBanManager
-	nfq         *nfqueue.Nfqueue
-	logger      *Logger
+	config     Config
+	analyzer   *Analyzer
+	banManager *IPBanManager
+	nfq        *nfqueue.Nfqueue
+	logger     *Logger
 }
 
 // New creates a new BitTorrent blocker instance
@@ -69,7 +69,7 @@ func (b *Blocker) Start(ctx context.Context) error {
 			ip, _ := ipLayer.(*layers.IPv4)
 			remoteIP = ip.DstIP.String()
 		} else {
-			b.nfq.SetVerdict(id, verdict)
+			_ = b.nfq.SetVerdict(id, verdict)
 			return 0
 		}
 
@@ -84,20 +84,20 @@ func (b *Blocker) Start(ctx context.Context) error {
 			appLayer = udp.Payload
 			isUDP = true
 		} else {
-			b.nfq.SetVerdict(id, verdict) // Not TCP/UDP -> pass
+			_ = b.nfq.SetVerdict(id, verdict) // Not TCP/UDP -> pass
 			return 0
 		}
 
 		// Whitelist check
 		if WhitelistPorts[srcPort] || WhitelistPorts[dstPort] {
 			b.logger.Debug("Whitelisted port: %s:%d -> %s:%d", "src", srcPort, remoteIP, dstPort)
-			b.nfq.SetVerdict(id, verdict)
+			_ = b.nfq.SetVerdict(id, verdict)
 			return 0
 		}
 
 		if len(appLayer) == 0 {
 			b.logger.Debug("Empty payload: %s:%d", remoteIP, dstPort)
-			b.nfq.SetVerdict(id, verdict)
+			_ = b.nfq.SetVerdict(id, verdict)
 			return 0
 		}
 
@@ -111,13 +111,17 @@ func (b *Blocker) Start(ctx context.Context) error {
 				proto = "UDP"
 			}
 			b.logger.Info("[BLOCK] %s %s:%d (%s) - Banning for 5h", proto, remoteIP, dstPort, result.Reason)
-			b.nfq.SetVerdict(id, nfqueue.NfDrop)
-			go b.banManager.BanIP(remoteIP) // Async ban
+			_ = b.nfq.SetVerdict(id, nfqueue.NfDrop)
+			go func() {
+				if err := b.banManager.BanIP(remoteIP); err != nil {
+					b.logger.Error("Failed to ban IP %s: %v", remoteIP, err)
+				}
+			}()
 			return 0
 		}
 
 		b.logger.Debug("[ALLOW] %s:%d (payload: %d bytes)", remoteIP, dstPort, len(appLayer))
-		b.nfq.SetVerdict(id, verdict)
+		_ = b.nfq.SetVerdict(id, verdict)
 		return 0
 	}
 

@@ -63,9 +63,9 @@ func TestUnwrapSOCKS5(t *testing.T) {
 			name: "SOCKS5 IPv4",
 			packet: []byte{
 				0x00, 0x00, 0x00, // Reserved + Fragment
-				0x01,                   // ATYP: IPv4
-				192, 168, 1, 1,         // IP
-				0x1A, 0xE1,             // Port
+				0x01,           // ATYP: IPv4
+				192, 168, 1, 1, // IP
+				0x1A, 0xE1, // Port
 				0x64, 0x31, 0x3A, 0x61, // Payload: "d1:a"
 			},
 			wantPayload: []byte{0x64, 0x31, 0x3A, 0x61},
@@ -78,7 +78,7 @@ func TestUnwrapSOCKS5(t *testing.T) {
 				0x04, // ATYP: IPv6
 				0x20, 0x01, 0x0d, 0xb8, 0x00, 0x00, 0x00, 0x00,
 				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, // IPv6
-				0x1A, 0xE1,             // Port
+				0x1A, 0xE1, // Port
 				0x64, 0x31, 0x3A, 0x61, // Payload
 			},
 			wantPayload: []byte{0x64, 0x31, 0x3A, 0x61},
@@ -100,10 +100,10 @@ func TestUnwrapSOCKS5(t *testing.T) {
 			name: "SOCKS5 Domain",
 			packet: []byte{
 				0x00, 0x00, 0x00, // Reserved + Fragment
-				0x03,                         // ATYP: Domain
-				0x0B,                         // Domain length: 11
+				0x03,                                                  // ATYP: Domain
+				0x0B,                                                  // Domain length: 11
 				'e', 'x', 'a', 'm', 'p', 'l', 'e', '.', 'c', 'o', 'm', // Domain: "example.com"
-				0x1A, 0xE1,             // Port
+				0x1A, 0xE1, // Port
 				0x64, 0x31, 0x3A, 0x61, // Payload: "d1:a"
 			},
 			wantPayload: []byte{0x64, 0x31, 0x3A, 0x61},
@@ -328,8 +328,8 @@ func TestCheckUTPRobust(t *testing.T) {
 			name: "Extension offset exceeds packet length",
 			packet: func() []byte {
 				p := make([]byte, 21)
-				p[0] = 0x21 // Version 1, Type ST_DATA (2)
-				p[1] = 0x01 // Extension type 1
+				p[0] = 0x21  // Version 1, Type ST_DATA (2)
+				p[1] = 0x01  // Extension type 1
 				p[20] = 0x00 // Next extension = 0 (end of chain, at offset 20)
 				// Missing length byte at offset 21 (would be out of bounds)
 				return p
@@ -749,8 +749,8 @@ func TestCheckMSEEncryption(t *testing.T) {
 			expected: false,
 		},
 		{
-			name: "Normal HTTP traffic",
-			payload: []byte("GET /announce?info_hash=xxxxx HTTP/1.1\r\nHost: tracker.example.com\r\n\r\n"),
+			name:     "Normal HTTP traffic",
+			payload:  []byte("GET /announce?info_hash=xxxxx HTTP/1.1\r\nHost: tracker.example.com\r\n\r\n"),
 			expected: false,
 		},
 	}
@@ -858,9 +858,9 @@ func TestCheckExtendedMessage(t *testing.T) {
 			name: "Extended handshake (msg ID 20, ext ID 0)",
 			payload: []byte{
 				0x00, 0x00, 0x00, 0x30, // Length: 48 bytes
-				0x14,                   // Message ID: 20 (Extended)
-				0x00,                   // Extended ID: 0 (handshake)
-				'd',                    // Bencode dictionary start
+				0x14, // Message ID: 20 (Extended)
+				0x00, // Extended ID: 0 (handshake)
+				'd',  // Bencode dictionary start
 				'1', ':', 'm', 'd',
 				'6', ':', 'u', 't', '_', 'p', 'e', 'x',
 				'i', '1', 'e', 'e', 'e',
@@ -1010,7 +1010,7 @@ func TestCheckFASTExtension(t *testing.T) {
 			name: "Wrong length for Reject Request",
 			payload: []byte{
 				0x00, 0x00, 0x00, 0x0C, // Length: 12 (should be 13)
-				0x10,                   // Message ID: 16
+				0x10, // Message ID: 16
 				0x00, 0x00, 0x00, 0x05,
 				0x00, 0x00, 0x00, 0x00,
 			},

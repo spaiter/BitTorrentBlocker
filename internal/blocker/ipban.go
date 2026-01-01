@@ -9,8 +9,8 @@ import (
 
 // IPBanManager manages IP banning with caching to avoid duplicate operations
 type IPBanManager struct {
-	cache    map[string]time.Time
-	mu       sync.RWMutex
+	cache     map[string]time.Time
+	mu        sync.RWMutex
 	ipSetName string
 	duration  string
 }

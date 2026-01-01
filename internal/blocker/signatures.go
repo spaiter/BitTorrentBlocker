@@ -33,32 +33,32 @@ var BTSignatures = [][]byte{
 	[]byte("-LT12"),   // PeerID libtorrent 1.2
 
 	// 3. PEX (Peer Exchange) Keys (from ut_pex.cpp) - CRITICAL
-	[]byte("ut_pex"),    // Extension name
-	[]byte("5:added"),   // Added peers list
-	[]byte("7:added.f"), // Flags
-	[]byte("7:dropped"), // Dropped peers
-	[]byte("6:added6"),  // IPv6 peers
+	[]byte("ut_pex"),     // Extension name
+	[]byte("5:added"),    // Added peers list
+	[]byte("7:added.f"),  // Flags
+	[]byte("7:dropped"),  // Dropped peers
+	[]byte("6:added6"),   // IPv6 peers
 	[]byte("8:added6.f"), // IPv6 peer flags
 	[]byte("8:dropped6"), // IPv6 dropped peers
-	[]byte("1:m"),       // Extensions dictionary
+	[]byte("1:m"),        // Extensions dictionary
 
 	// 4. Extension Protocol (BEP 10)
-	[]byte("ut_metadata"),    // Metadata extension
-	[]byte("12:ut_holepunch"), // NAT hole punching
-	[]byte("11:upload_only"),  // Upload-only mode
-	[]byte("10:share_mode"),   // Share mode
-	[]byte("9:lt_donthave"),   // Piece removal
-	[]byte("11:LT_metadata"),  // Legacy metadata
-	[]byte("6:yourip"),        // External IP
+	[]byte("ut_metadata"),      // Metadata extension
+	[]byte("12:ut_holepunch"),  // NAT hole punching
+	[]byte("11:upload_only"),   // Upload-only mode
+	[]byte("10:share_mode"),    // Share mode
+	[]byte("9:lt_donthave"),    // Piece removal
+	[]byte("11:LT_metadata"),   // Legacy metadata
+	[]byte("6:yourip"),         // External IP
 	[]byte("13:metadata_size"), // Metadata size
-	[]byte("8:msg_type"),      // Metadata message type
-	[]byte("10:total_size"),   // Total metadata size
-	[]byte("4:reqq"),          // Request queue size
+	[]byte("8:msg_type"),       // Metadata message type
+	[]byte("10:total_size"),    // Total metadata size
+	[]byte("4:reqq"),           // Request queue size
 
 	// 5. Text / HTTP Trackers
 	[]byte("magnet:?"),
-	[]byte("magnet:?xt=urn:btih:"),  // v1 info hash
-	[]byte("magnet:?xt=urn:btmh:"),  // v2 multihash
+	[]byte("magnet:?xt=urn:btih:"), // v1 info hash
+	[]byte("magnet:?xt=urn:btmh:"), // v2 multihash
 	[]byte("udp://tracker."),
 	[]byte("announce.php?passkey="),
 	[]byte("info_hash"),
@@ -106,14 +106,14 @@ var BTSignatures = [][]byte{
 	[]byte("12:pieces root"),
 
 	// 10. HTTP-based BitTorrent (from nDPI)
-	[]byte("GET /webseed?info_hash="),   // WebSeed protocol
-	[]byte("GET /data?fid="),             // Bitcomet persistent seed
-	[]byte("&size="),                     // Bitcomet size parameter
-	[]byte("User-Agent: Azureus"),        // Azureus/Vuze client
-	[]byte("User-Agent: BitTorrent"),     // Official BitTorrent client
-	[]byte("User-Agent: BTWebClient"),    // BitTorrent web client
-	[]byte("User-Agent: Shareaza"),       // Shareaza client
-	[]byte("User-Agent: FlashGet"),       // FlashGet client
+	[]byte("GET /webseed?info_hash="), // WebSeed protocol
+	[]byte("GET /data?fid="),          // Bitcomet persistent seed
+	[]byte("&size="),                  // Bitcomet size parameter
+	[]byte("User-Agent: Azureus"),     // Azureus/Vuze client
+	[]byte("User-Agent: BitTorrent"),  // Official BitTorrent client
+	[]byte("User-Agent: BTWebClient"), // BitTorrent web client
+	[]byte("User-Agent: Shareaza"),    // Shareaza client
+	[]byte("User-Agent: FlashGet"),    // FlashGet client
 }
 
 // PeerIDPrefixes contains known BitTorrent client PeerID prefixes
@@ -179,13 +179,13 @@ var PeerIDPrefixes = [][]byte{
 	[]byte("-FG"), // FlashGet
 
 	// Non-Azureus style prefixes
-	[]byte("M4-"),    // Mainline (official BitTorrent)
-	[]byte("T0"),     // BitTornado
-	[]byte("OP"),     // Opera
-	[]byte("XBT"),    // XBT Client
-	[]byte("exbc"),   // BitComet (non-Azureus)
-	[]byte("FUTB"),   // FuTorrent
-	[]byte("Plus"),   // Plus! v2
-	[]byte("turbo"),  // Turbo BT
-	[]byte("btpd"),   // BT Protocol Daemon
+	[]byte("M4-"),   // Mainline (official BitTorrent)
+	[]byte("T0"),    // BitTornado
+	[]byte("OP"),    // Opera
+	[]byte("XBT"),   // XBT Client
+	[]byte("exbc"),  // BitComet (non-Azureus)
+	[]byte("FUTB"),  // FuTorrent
+	[]byte("Plus"),  // Plus! v2
+	[]byte("turbo"), // Turbo BT
+	[]byte("btpd"),  // BT Protocol Daemon
 }
