@@ -34,6 +34,11 @@ func main() {
 	// Create blocker with default configuration
 	config := blocker.DefaultConfig()
 
+	// Override with environment variables if set
+	if logLevel := os.Getenv("LOG_LEVEL"); logLevel != "" {
+		config.LogLevel = logLevel
+	}
+
 	btBlocker, err := blocker.New(config)
 	if err != nil {
 		log.Fatalf("Failed to create blocker: %v", err)

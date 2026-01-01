@@ -65,6 +65,12 @@ in {
       default = [ 22 53 80 443 853 5222 5269 ];
       description = "Ports to whitelist (never block)";
     };
+
+    logLevel = mkOption {
+      type = types.enum [ "error" "warn" "info" "debug" ];
+      default = "info";
+      description = "Logging level (error, warn, info, debug)";
+    };
   };
 
   config = mkIf cfg.enable {
@@ -88,6 +94,9 @@ in {
         ExecStart = "${cfg.package}/bin/btblocker";
         Restart = "on-failure";
         RestartSec = "5s";
+
+        # Environment variables
+        Environment = [ "LOG_LEVEL=${cfg.logLevel}" ];
 
         # Security hardening
         NoNewPrivileges = false; # Required for CAP_NET_ADMIN

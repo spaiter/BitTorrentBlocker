@@ -7,6 +7,7 @@ type Config struct {
 	MinPayloadSize   int
 	IPSetName        string
 	BanDuration      string // Duration in seconds as string
+	LogLevel         string // Logging level: error, warn, info, debug
 }
 
 // DefaultConfig returns a configuration with recommended defaults
@@ -17,5 +18,6 @@ func DefaultConfig() Config {
 		MinPayloadSize:   60,
 		IPSetName:        "torrent_block",
 		BanDuration:      "18000", // 5 hours in seconds
+		LogLevel:         "info",
 	}
 }

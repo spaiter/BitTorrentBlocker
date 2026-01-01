@@ -3,7 +3,6 @@ package blocker
 import (
 	"context"
 	"fmt"
-	"log"
 
 	"github.com/florianl/go-nfqueue"
 	"github.com/google/gopacket"
@@ -16,6 +15,7 @@ type Blocker struct {
 	analyzer    *Analyzer
 	banManager  *IPBanManager
 	nfq         *nfqueue.Nfqueue
+	logger      *Logger
 }
 
 // New creates a new BitTorrent blocker instance
@@ -33,11 +33,14 @@ func New(config Config) (*Blocker, error) {
 		return nil, fmt.Errorf("could not open nfqueue: %w", err)
 	}
 
+	logger := NewLogger(config.LogLevel)
+
 	return &Blocker{
 		config:     config,
 		analyzer:   NewAnalyzer(config),
 		banManager: NewIPBanManager(config.IPSetName, config.BanDuration),
 		nfq:        nfq,
+		logger:     logger,
 	}, nil
 }
 
@@ -87,11 +90,13 @@ func (b *Blocker) Start(ctx context.Context) error {
 
 		// Whitelist check
 		if WhitelistPorts[srcPort] || WhitelistPorts[dstPort] {
+			b.logger.Debug("Whitelisted port: %s:%d -> %s:%d", "src", srcPort, remoteIP, dstPort)
 			b.nfq.SetVerdict(id, verdict)
 			return 0
 		}
 
 		if len(appLayer) == 0 {
+			b.logger.Debug("Empty payload: %s:%d", remoteIP, dstPort)
 			b.nfq.SetVerdict(id, verdict)
 			return 0
 		}
@@ -101,22 +106,29 @@ func (b *Blocker) Start(ctx context.Context) error {
 
 		// Apply verdict
 		if result.ShouldBlock {
-			log.Printf("[BLOCK] %s -> %s:%d (Banning for 5h)", result.Reason, remoteIP, dstPort)
+			proto := "TCP"
+			if isUDP {
+				proto = "UDP"
+			}
+			b.logger.Info("[BLOCK] %s %s:%d (%s) - Banning for 5h", proto, remoteIP, dstPort, result.Reason)
 			b.nfq.SetVerdict(id, nfqueue.NfDrop)
 			go b.banManager.BanIP(remoteIP) // Async ban
 			return 0
 		}
 
+		b.logger.Debug("[ALLOW] %s:%d (payload: %d bytes)", remoteIP, dstPort, len(appLayer))
 		b.nfq.SetVerdict(id, verdict)
 		return 0
 	}
 
 	if err := b.nfq.RegisterWithErrorFunc(ctx, fn, func(e error) int {
-		log.Printf("Error: %v", e)
+		b.logger.Error("Error: %v", e)
 		return -1
 	}); err != nil {
 		return fmt.Errorf("could not register callback: %w", err)
 	}
+
+	b.logger.Info("BitTorrent blocker started on queue %d (log level: %s)", b.config.QueueNum, b.config.LogLevel)
 
 	return nil
 }
