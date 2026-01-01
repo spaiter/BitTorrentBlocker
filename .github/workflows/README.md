@@ -4,8 +4,8 @@ This directory contains the CI/CD pipelines for BitTorrent Blocker.
 
 ## Active Workflows
 
-### `pipeline.yml` - Main CI/CD Pipeline ⭐
-The unified pipeline that handles everything from testing to release:
+### `pipeline.yml` - Complete CI/CD Pipeline ⭐
+**The only active workflow** - handles everything from testing to maintenance:
 
 **Stages:**
 1. **Test** (parallel):
@@ -29,8 +29,11 @@ The unified pipeline that handles everything from testing to release:
    - Push Docker images to GHCR
    - Push Nix packages to Cachix
 
+5. **Maintenance** (after publish):
+   - Update flake.lock with latest dependencies
+
 **Triggers:**
-- Push to `main` - Full pipeline (test → build → release → publish)
+- Push to `main` - Full pipeline (test → build → release → publish → maintenance)
 - Pull requests - Tests only
 
 **Version Bumping:**
@@ -38,25 +41,17 @@ The unified pipeline that handles everything from testing to release:
 - `fix:`, `perf:`, `refactor:` → patch version bump
 - `feat!:`, `BREAKING CHANGE:` → major version bump
 
-### `nix.yml` - Nix Maintenance
-Updates flake.lock automatically when dependencies change.
-
-**Triggers:** Push to `main`
-
-### `update-flake.yml` - Vendor Hash Updates
-Updates vendorHash in flake.nix when Go dependencies change.
-
-**Triggers:** Changes to `go.mod` or `go.sum` on `main`
-
 ## Disabled Workflows
 
-These workflows have been replaced by `pipeline.yml`:
+These workflows have been consolidated into `pipeline.yml`:
 
-- `ci.yml.disabled` - Replaced by pipeline test stage
-- `release.yml.disabled` - Replaced by pipeline release stage
-- `build-release.yml.disabled` - Replaced by pipeline build/publish stages
+- `ci.yml.disabled` - Tests (now: pipeline stage 1)
+- `release.yml.disabled` - Versioning & releases (now: pipeline stage 3)
+- `build-release.yml.disabled` - Building & publishing (now: pipeline stages 2 & 4)
+- ~~`nix.yml`~~ - Removed (flake.lock updates now: pipeline stage 5)
+- ~~`update-flake.yml`~~ - Removed (vendor hash updates no longer needed with committed vendor/)
 
-To re-enable, remove the `.disabled` extension.
+To re-enable a disabled workflow, remove the `.disabled` extension.
 
 ## Pipeline Flow Diagram
 
@@ -98,6 +93,13 @@ To re-enable, remove the `.disabled` extension.
          │  │ Upload Binaries │   │ (parallel)
          │  │ Push Docker     │   │
          │  │ Push to Cachix  │   │
+         │  └─────────────────┘   │
+         └───────────┬────────────┘
+                     │
+         ┌───────────▼────────────┐
+         │ STAGE 5: MAINTENANCE   │
+         │  ┌─────────────────┐   │
+         │  │ Update flake.lock│  │
          │  └─────────────────┘   │
          └────────────────────────┘
 ```
