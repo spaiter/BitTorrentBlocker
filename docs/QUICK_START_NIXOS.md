@@ -46,11 +46,11 @@ nix flake init
     interfaces = [ "eth0" ];  # Your interface
     queueNum = 0;
     entropyThreshold = 7.6;
-    banDuration = "18000";  # 5 hours
+    banDuration = 18000;  # 5 hours
+    logLevel = "info";    # error, warn, info, or debug
   };
 
-  # Load kernel modules
-  boot.kernelModules = [ "nfnetlink_queue" "xt_NFQUEUE" ];
+  # Kernel modules are automatically loaded by the module
 }
 ```
 
@@ -111,7 +111,8 @@ sudo iptables -L -n -v
 | `entropyThreshold` | 7.6 | Encryption detection threshold |
 | `minPayloadSize` | 60 | Min bytes for analysis |
 | `ipsetName` | "torrent_block" | Name of ipset |
-| `banDuration` | "18000" | Ban time in seconds |
+| `banDuration` | 18000 | Ban time in seconds |
+| `logLevel` | "info" | Log level: error, warn, info, debug |
 | `interfaces` | ["eth0"] | Interfaces to monitor |
 | `whitelistPorts` | [22,53,80,443,...] | Ports to never block |
 
@@ -149,7 +150,19 @@ services.btblocker.interfaces = [ "eth0" "eth1" "wlan0" ];
 ### Longer Ban Duration
 
 ```nix
-services.btblocker.banDuration = "86400";  # 24 hours
+services.btblocker.banDuration = 86400;  # 24 hours
+```
+
+### Enable Debug Logging
+
+For troubleshooting:
+```nix
+services.btblocker.logLevel = "debug";
+```
+
+Then watch detailed logs:
+```bash
+journalctl -u btblocker -f
 ```
 
 ## Troubleshooting
@@ -221,7 +234,8 @@ services.btblocker.whitelistPorts = [ 22 53 80 443 8080 ];
     interfaces = [ "enp1s0" ];
     queueNum = 0;
     entropyThreshold = 7.6;
-    banDuration = "18000";
+    banDuration = 18000;
+    logLevel = "info";
     ipsetName = "torrent_block";
     whitelistPorts = [ 22 53 80 443 853 ];
   };

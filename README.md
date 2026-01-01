@@ -190,9 +190,16 @@ config := blocker.Config{
     EntropyThreshold: 7.6,    // Entropy threshold for encrypted traffic
     MinPayloadSize:   60,     // Minimum payload size for analysis
     IPSetName:        "torrent_block",
-    BanDuration:      "18000", // 5 hours in seconds
+    BanDuration:      18000,  // 5 hours in seconds
+    LogLevel:         "info", // Log level: error, warn, info, debug
 }
 ```
+
+**Log Levels:**
+- `error` - Only critical errors
+- `warn` - Warnings and errors
+- `info` - General information, warnings, and errors (default)
+- `debug` - Detailed traffic analysis including blocked/allowed packets
 
 ## How It Works
 

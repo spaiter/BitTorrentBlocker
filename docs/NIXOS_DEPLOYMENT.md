@@ -15,7 +15,7 @@ Add the module to your NixOS configuration:
 {
   imports = [
     # ... your other imports
-    /path/to/BitTorrentBlocker/test/e2e/nixos-module.nix
+    /path/to/BitTorrentBlocker/nix/module.nix
   ];
 
   # Enable the blocker service
@@ -24,12 +24,12 @@ Add the module to your NixOS configuration:
     queueNum = 0;
     entropyThreshold = 7.6;
     ipsetName = "torrent_block";
-    banDuration = "18000";  # 5 hours
+    banDuration = 18000;  # 5 hours
+    logLevel = "info";    # error, warn, info, or debug
     interfaces = [ "eth0" ];  # Your network interface(s)
   };
 
-  # Ensure required kernel modules are loaded
-  boot.kernelModules = [ "nfnetlink_queue" "xt_NFQUEUE" ];
+  # Kernel modules are automatically loaded by the module
 }
 ```
 
@@ -67,7 +67,8 @@ iptables -t mangle -L -n -v
 | `entropyThreshold` | float | 7.6 | Entropy threshold for encrypted traffic detection |
 | `minPayloadSize` | int | 60 | Minimum payload size for entropy analysis (bytes) |
 | `ipsetName` | string | "torrent_block" | Name of ipset for banned IPs |
-| `banDuration` | string | "18000" | Ban duration in seconds (5 hours) |
+| `banDuration` | int | 18000 | Ban duration in seconds (5 hours) |
+| `logLevel` | string | "info" | Log level: error, warn, info, or debug |
 | `interfaces` | list | ["eth0"] | Network interfaces to monitor |
 | `whitelistPorts` | list | [22, 53, 80, 443, 853, 5222, 5269] | Ports to never block |
 
@@ -87,7 +88,10 @@ services.btblocker = {
   interfaces = [ "eth0" "eth1" "wlan0" ];
 
   # Longer ban duration (24 hours)
-  banDuration = "86400";
+  banDuration = 86400;
+
+  # Enable debug logging
+  logLevel = "debug";
 
   # Add custom whitelisted ports
   whitelistPorts = [ 22 53 80 443 853 3000 8080 ];
@@ -209,13 +213,18 @@ sudo tcpdump -i eth0 -n port 6881
 **Problem**: Normal traffic being blocked
 
 **Solutions**:
-1. Increase `entropyThreshold` (default: 7.6 → 7.8 or 8.0)
-2. Increase `minPayloadSize` (default: 60 → 100 or 200)
-3. Add ports to `whitelistPorts`
-4. Check logs to see what's being blocked:
-   ```bash
-   journalctl -u btblocker -f | grep BLOCK
+1. Enable debug logging to see why traffic is blocked:
+   ```nix
+   services.btblocker.logLevel = "debug";
    ```
+   Then rebuild and watch logs:
+   ```bash
+   sudo nixos-rebuild switch
+   journalctl -u btblocker -f
+   ```
+2. Increase `entropyThreshold` (default: 7.6 → 7.8 or 8.0)
+3. Increase `minPayloadSize` (default: 60 → 100 or 200)
+4. Add ports to `whitelistPorts`
 
 ### High CPU Usage
 
@@ -266,16 +275,50 @@ services.prometheus.scrapeConfigs = [
 
 ### 3. Logging
 
-Configure structured logging:
+Configure log level based on your needs:
 
 ```nix
-services.btblocker.extraConfig = {
-  logLevel = "info";
-  logFormat = "json";
+services.btblocker = {
+  enable = true;
+
+  # Set log level (error, warn, info, debug)
+  logLevel = "warn";  # Production: less verbose
+  # logLevel = "debug";  # Debugging: shows all traffic
+
+  # View logs with:
+  # journalctl -u btblocker -f
 };
 ```
 
-### 4. Backup Ban List
+**Log Levels:**
+- `error` - Only critical errors (minimal logging)
+- `warn` - Warnings and errors
+- `info` - General information (default, recommended for production)
+- `debug` - Detailed packet analysis (shows blocked/allowed packets, use for troubleshooting)
+
+### 4. Debug Mode for Troubleshooting
+
+When investigating false positives or blocked traffic:
+
+```bash
+# Enable debug logging temporarily
+sudo systemctl stop btblocker
+sudo LOG_LEVEL=debug btblocker
+
+# Or edit the NixOS configuration and rebuild:
+services.btblocker.logLevel = "debug";
+
+# Watch debug output
+journalctl -u btblocker -f
+```
+
+With debug logging enabled, you'll see:
+- Every packet analyzed
+- Why packets were blocked (which detection method triggered)
+- Allowed packets passing through
+- IP ban operations
+
+### 5. Backup Ban List
 
 Periodically backup the ipset:
 
