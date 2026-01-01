@@ -16,7 +16,7 @@ func TestDefaultConfig(t *testing.T) {
 		{"EntropyThreshold", config.EntropyThreshold, 7.6},
 		{"MinPayloadSize", config.MinPayloadSize, 60},
 		{"IPSetName", config.IPSetName, "torrent_block"},
-		{"BanDuration", config.BanDuration, "18000"},
+		{"BanDuration", config.BanDuration, 18000},
 	}
 
 	for _, tt := range tests {
@@ -46,7 +46,7 @@ func TestConfigValidation(t *testing.T) {
 				EntropyThreshold: 8.0,
 				MinPayloadSize:   100,
 				IPSetName:        "custom_set",
-				BanDuration:      "7200",
+				BanDuration:      7200,
 			},
 			valid: true,
 		},
@@ -57,7 +57,7 @@ func TestConfigValidation(t *testing.T) {
 				EntropyThreshold: 0,
 				MinPayloadSize:   60,
 				IPSetName:        "test",
-				BanDuration:      "3600",
+				BanDuration:      3600,
 			},
 			valid: true, // Zero is valid (means no entropy check)
 		},
@@ -68,7 +68,7 @@ func TestConfigValidation(t *testing.T) {
 				EntropyThreshold: 7.6,
 				MinPayloadSize:   60,
 				IPSetName:        "",
-				BanDuration:      "3600",
+				BanDuration:      3600,
 			},
 			valid: true, // Empty is valid (might not use ipset)
 		},
@@ -93,7 +93,7 @@ func TestConfigCustomValues(t *testing.T) {
 		EntropyThreshold: 6.5,
 		MinPayloadSize:   128,
 		IPSetName:        "custom_blocker",
-		BanDuration:      "86400", // 24 hours
+		BanDuration:      86400, // 24 hours
 	}
 
 	if config.QueueNum != 10 {
@@ -112,7 +112,7 @@ func TestConfigCustomValues(t *testing.T) {
 		t.Errorf("IPSetName = %v, want custom_blocker", config.IPSetName)
 	}
 
-	if config.BanDuration != "86400" {
+	if config.BanDuration != 86400 {
 		t.Errorf("BanDuration = %v, want 86400", config.BanDuration)
 	}
 }
@@ -123,7 +123,7 @@ func TestConfigInAnalyzer(t *testing.T) {
 		EntropyThreshold: 9.0, // Very high threshold
 		MinPayloadSize:   200, // Large minimum size
 		IPSetName:        "test",
-		BanDuration:      "3600",
+		BanDuration:      3600,
 	}
 
 	analyzer := NewAnalyzer(config)

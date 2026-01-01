@@ -2,6 +2,7 @@ package blocker
 
 import (
 	"os/exec"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -15,11 +16,11 @@ type IPBanManager struct {
 }
 
 // NewIPBanManager creates a new IP ban manager
-func NewIPBanManager(ipSetName, duration string) *IPBanManager {
+func NewIPBanManager(ipSetName string, duration int) *IPBanManager {
 	return &IPBanManager{
 		cache:     make(map[string]time.Time),
 		ipSetName: ipSetName,
-		duration:  duration,
+		duration:  strconv.Itoa(duration),
 	}
 }
 

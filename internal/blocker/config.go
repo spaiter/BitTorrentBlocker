@@ -6,7 +6,7 @@ type Config struct {
 	EntropyThreshold float64
 	MinPayloadSize   int
 	IPSetName        string
-	BanDuration      string // Duration in seconds as string
+	BanDuration      int    // Duration in seconds
 	LogLevel         string // Logging level: error, warn, info, debug
 }
 
@@ -17,7 +17,7 @@ func DefaultConfig() Config {
 		EntropyThreshold: 7.6, // Threshold for RC4/Encryption detection
 		MinPayloadSize:   60,
 		IPSetName:        "torrent_block",
-		BanDuration:      "18000", // 5 hours in seconds
+		BanDuration:      18000, // 5 hours in seconds
 		LogLevel:         "info",
 	}
 }

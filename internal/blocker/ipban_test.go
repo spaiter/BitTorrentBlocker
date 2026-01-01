@@ -7,7 +7,7 @@ import (
 )
 
 func TestNewIPBanManager(t *testing.T) {
-	manager := NewIPBanManager("test_set", "3600")
+	manager := NewIPBanManager("test_set", 3600)
 
 	if manager == nil {
 		t.Fatal("NewIPBanManager returned nil")
@@ -27,7 +27,7 @@ func TestNewIPBanManager(t *testing.T) {
 }
 
 func TestIPBanManager_BanIP_Caching(t *testing.T) {
-	manager := NewIPBanManager("test_set", "3600")
+	manager := NewIPBanManager("test_set", 3600)
 
 	ip := "192.168.1.100"
 
@@ -66,7 +66,7 @@ func TestIPBanManager_BanIP_Caching(t *testing.T) {
 }
 
 func TestIPBanManager_BanIP_CacheExpiry(t *testing.T) {
-	manager := NewIPBanManager("test_set", "3600")
+	manager := NewIPBanManager("test_set", 3600)
 
 	ip := "192.168.1.101"
 
@@ -92,7 +92,7 @@ func TestIPBanManager_BanIP_CacheExpiry(t *testing.T) {
 }
 
 func TestIPBanManager_BanIP_Concurrency(t *testing.T) {
-	manager := NewIPBanManager("test_set", "3600")
+	manager := NewIPBanManager("test_set", 3600)
 
 	// Test concurrent bans
 	var wg sync.WaitGroup
@@ -120,7 +120,7 @@ func TestIPBanManager_BanIP_Concurrency(t *testing.T) {
 }
 
 func TestIPBanManager_BanIP_MultipleIPs(t *testing.T) {
-	manager := NewIPBanManager("test_set", "3600")
+	manager := NewIPBanManager("test_set", 3600)
 
 	ips := []string{
 		"192.168.1.1",
@@ -153,7 +153,7 @@ func TestIPBanManager_BanIP_MultipleIPs(t *testing.T) {
 }
 
 func TestIPBanManager_CleanCache(t *testing.T) {
-	manager := NewIPBanManager("test_set", "3600")
+	manager := NewIPBanManager("test_set", 3600)
 
 	// Add some old entries
 	oldTime := time.Now().Add(-2 * time.Hour)
@@ -181,7 +181,7 @@ func TestIPBanManager_CleanCache(t *testing.T) {
 }
 
 func TestIPBanManager_CleanCache_Empty(t *testing.T) {
-	manager := NewIPBanManager("test_set", "3600")
+	manager := NewIPBanManager("test_set", 3600)
 
 	// Clean empty cache should not panic
 	manager.CleanCache(1 * time.Hour)
@@ -196,7 +196,7 @@ func TestIPBanManager_CleanCache_Empty(t *testing.T) {
 }
 
 func TestIPBanManager_CleanCache_Concurrency(t *testing.T) {
-	manager := NewIPBanManager("test_set", "3600")
+	manager := NewIPBanManager("test_set", 3600)
 
 	// Add entries
 	for i := 0; i < 100; i++ {
@@ -233,7 +233,7 @@ func TestIPBanManager_CleanCache_Concurrency(t *testing.T) {
 }
 
 func BenchmarkIPBanManager_BanIP_Cached(b *testing.B) {
-	manager := NewIPBanManager("test_set", "3600")
+	manager := NewIPBanManager("test_set", 3600)
 	ip := "192.168.1.100"
 
 	// Prime the cache
@@ -246,7 +246,7 @@ func BenchmarkIPBanManager_BanIP_Cached(b *testing.B) {
 }
 
 func BenchmarkIPBanManager_BanIP_Different(b *testing.B) {
-	manager := NewIPBanManager("test_set", "3600")
+	manager := NewIPBanManager("test_set", 3600)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -256,7 +256,7 @@ func BenchmarkIPBanManager_BanIP_Different(b *testing.B) {
 }
 
 func BenchmarkIPBanManager_CleanCache(b *testing.B) {
-	manager := NewIPBanManager("test_set", "3600")
+	manager := NewIPBanManager("test_set", 3600)
 
 	// Add many entries
 	for i := 0; i < 1000; i++ {

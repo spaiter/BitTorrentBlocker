@@ -180,7 +180,7 @@ func TestAnalyzer_CustomThresholds(t *testing.T) {
 		EntropyThreshold: 9.0, // Very high threshold
 		MinPayloadSize:   60,
 		IPSetName:        "test",
-		BanDuration:      "3600",
+		BanDuration:      3600,
 	}
 	analyzer := NewAnalyzer(config)
 
