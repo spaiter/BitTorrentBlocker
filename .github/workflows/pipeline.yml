@@ -390,7 +390,7 @@ jobs:
             # Create archive
             if [[ "$platform" == *"windows"* ]]; then
               zip "btblocker-${{ needs.create-release.outputs.version }}-${platform}.zip" *
-              powershell -Command "(Get-FileHash -Algorithm SHA256 '*.zip').Hash.ToLower() + '  ' + (Get-Item '*.zip').Name" > *.zip.sha256
+              sha256sum *.zip > *.zip.sha256
             else
               tar czf "btblocker-${{ needs.create-release.outputs.version }}-${platform}.tar.gz" *
               sha256sum *.tar.gz > *.tar.gz.sha256
