@@ -41,17 +41,15 @@ This directory contains the CI/CD pipelines for BitTorrent Blocker.
 - `fix:`, `perf:`, `refactor:` → patch version bump
 - `feat!:`, `BREAKING CHANGE:` → major version bump
 
-## Disabled Workflows
+## Legacy Workflows
 
-These workflows have been consolidated into `pipeline.yml`:
+All legacy workflows have been removed and consolidated into the single `pipeline.yml` workflow:
 
-- `ci.yml.disabled` - Tests (now: pipeline stage 1)
-- `release.yml.disabled` - Versioning & releases (now: pipeline stage 3)
-- `build-release.yml.disabled` - Building & publishing (now: pipeline stages 2 & 4)
-- ~~`nix.yml`~~ - Removed (flake.lock updates now: pipeline stage 5)
+- ~~`ci.yml`~~ - Removed (now: pipeline stage 1 - Tests)
+- ~~`release.yml`~~ - Removed (now: pipeline stage 3 - Release)
+- ~~`build-release.yml`~~ - Removed (now: pipeline stages 2 & 4 - Build & Publish)
+- ~~`nix.yml`~~ - Removed (now: pipeline stage 5 - Maintenance)
 - ~~`update-flake.yml`~~ - Removed (vendor hash updates no longer needed with committed vendor/)
-
-To re-enable a disabled workflow, remove the `.disabled` extension.
 
 ## Pipeline Flow Diagram
 
