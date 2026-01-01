@@ -1,8 +1,7 @@
 # BitTorrent Blocker
 
 [![Release](https://img.shields.io/github/v/release/spaiter/BitTorrentBlocker)](https://github.com/spaiter/BitTorrentBlocker/releases)
-[![CI](https://github.com/spaiter/BitTorrentBlocker/actions/workflows/ci.yml/badge.svg)](https://github.com/spaiter/BitTorrentBlocker/actions/workflows/ci.yml)
-[![Nix Build](https://github.com/spaiter/BitTorrentBlocker/actions/workflows/nix.yml/badge.svg)](https://github.com/spaiter/BitTorrentBlocker/actions/workflows/nix.yml)
+[![CI/CD Pipeline](https://github.com/spaiter/BitTorrentBlocker/actions/workflows/pipeline.yml/badge.svg)](https://github.com/spaiter/BitTorrentBlocker/actions/workflows/pipeline.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/spaiter/BitTorrentBlocker)](https://goreportcard.com/report/github.com/spaiter/BitTorrentBlocker)
 [![codecov](https://codecov.io/gh/spaiter/BitTorrentBlocker/branch/main/graph/badge.svg)](https://codecov.io/gh/spaiter/BitTorrentBlocker)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
