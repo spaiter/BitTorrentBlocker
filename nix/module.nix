@@ -89,6 +89,12 @@ in {
       after = [ "network.target" ];
       wantedBy = [ "multi-user.target" ];
 
+      # Ensure ipset and other tools are available in the service's PATH
+      path = with pkgs; [
+        ipset
+        nftables
+      ];
+
       serviceConfig = {
         Type = "simple";
         ExecStart = "${cfg.package}/bin/btblocker";
