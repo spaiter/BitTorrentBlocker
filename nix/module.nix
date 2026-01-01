@@ -117,8 +117,8 @@ in {
       };
 
       preStart = ''
-        # Create ipset for banned IPs
-        ${pkgs.ipset}/bin/ipset create -exist ${cfg.ipsetName} hash:ip timeout ${toString cfg.banDuration}
+        # Create ipset for banned IPs (ignore if exists)
+        ${pkgs.ipset}/bin/ipset create ${cfg.ipsetName} hash:ip timeout ${toString cfg.banDuration} 2>/dev/null || true
 
         # Configure nftables rules
         ${pkgs.nftables}/bin/nft add table inet btblocker 2>/dev/null || true
