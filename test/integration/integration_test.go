@@ -336,11 +336,11 @@ func buildHTTPSTraffic() []byte {
 func buildDNSQuery() []byte {
 	// Simple DNS query structure
 	query := make([]byte, 33)
-	query[0], query[1] = 0x12, 0x34 // Transaction ID
-	query[2], query[3] = 0x01, 0x00 // Flags: standard query
-	query[4], query[5] = 0x00, 0x01 // Questions: 1
-	query[6], query[7] = 0x00, 0x00 // Answer RRs: 0
-	query[8], query[9] = 0x00, 0x00 // Authority RRs: 0
+	query[0], query[1] = 0x12, 0x34   // Transaction ID
+	query[2], query[3] = 0x01, 0x00   // Flags: standard query
+	query[4], query[5] = 0x00, 0x01   // Questions: 1
+	query[6], query[7] = 0x00, 0x00   // Answer RRs: 0
+	query[8], query[9] = 0x00, 0x00   // Authority RRs: 0
 	query[10], query[11] = 0x00, 0x00 // Additional RRs: 0
 	// Question: example.com
 	copy(query[12:], []byte{0x07, 'e', 'x', 'a', 'm', 'p', 'l', 'e', 0x03, 'c', 'o', 'm', 0x00})
