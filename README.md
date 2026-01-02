@@ -141,26 +141,43 @@ docker compose up -d
 
 ### NixOS / Nix (Recommended for NixOS users)
 
-The blocker includes a complete NixOS module with automatic setup:
+The blocker includes a **complete NixOS module** that handles all configuration automatically. No need to manually configure systemd services, ipset, or firewall rules!
+
+#### Quick Start with Flakes
+
+Add BitTorrentBlocker to your system flake and import the module:
 
 ```nix
-# flake.nix
+# ~/my-server/flake.nix (or /etc/nixos/flake.nix)
 {
+  description = "My NixOS Configuration";
+
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     bittorrent-blocker.url = "github:spaiter/BitTorrentBlocker";
+    bittorrent-blocker.inputs.nixpkgs.follows = "nixpkgs";  # Use same nixpkgs
   };
 
-  outputs = { self, nixpkgs, bittorrent-blocker }: {
+  outputs = { self, nixpkgs, bittorrent-blocker, ... }: {
     nixosConfigurations.myhost = nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
       modules = [
+        ./configuration.nix  # Your existing configuration
+
+        # Import the official btblocker module
         bittorrent-blocker.nixosModules.default
+
+        # Configure btblocker
         {
           services.btblocker = {
             enable = true;
-            interface = "eth0";  # Your main network interface
+            interface = "eth0";  # Your network interface
             logLevel = "info";
+
+            # Optional: customize settings
+            banDuration = 18000;          # 5 hours (default)
+            firewallBackend = "nftables";  # or "iptables"
+            cleanupOnStop = false;        # keep banned IPs on stop
           };
         }
       ];
@@ -169,23 +186,51 @@ The blocker includes a complete NixOS module with automatic setup:
 }
 ```
 
-**What the NixOS module does automatically:**
-- ✅ Installs btblocker binary from Cachix (pre-built)
-- ✅ Creates systemd service with proper capabilities
-- ✅ Sets up ipset for banned IPs with 5-hour timeout
-- ✅ Configures nftables DROP rules for banned IPs
-- ✅ Handles service restarts gracefully
-
-**Quick test without installing:**
+**Deploy to your system:**
 ```bash
-# Try it on any Linux with Nix
-nix run github:spaiter/BitTorrentBlocker
+# Update flake inputs to get latest version
+nix flake update bittorrent-blocker
 
-# Install to your profile
-nix profile install github:spaiter/BitTorrentBlocker
+# Rebuild your system
+sudo nixos-rebuild switch --flake .#myhost
+
+# Check service status
+sudo systemctl status btblocker
+
+# View logs
+sudo journalctl -u btblocker -f
+
+# Check banned IPs
+sudo ipset list torrent_block
 ```
 
-Binary cache available at https://btblocker.cachix.org - Nix will prompt to trust it on first use.
+#### What the Module Does Automatically
+
+- ✅ **Installs btblocker binary** from Cachix (instant, pre-built)
+- ✅ **Creates systemd service** with CAP_NET_ADMIN capability
+- ✅ **Sets up ipset** (destroyed and recreated on each start for clean state)
+- ✅ **Configures firewall rules** (nftables or iptables, your choice)
+- ✅ **Loads kernel modules** (ip_set, ip_set_hash_ip)
+- ✅ **Handles all environment variables** automatically
+- ✅ **Cleans up on stop** (removes firewall rules, optionally destroys ipset)
+
+**No manual configuration needed!** Just enable the service and set your interface.
+
+#### Binary Cache
+
+Pre-built binaries are available at https://btblocker.cachix.org
+
+Nix will prompt to trust the cache on first use. This means instant installation without building from source.
+
+#### Quick Test (Without Installing)
+
+```bash
+# Try it on any Linux with Nix (no installation required)
+nix run github:spaiter/BitTorrentBlocker -- --version
+
+# Install to your user profile (non-NixOS)
+nix profile install github:spaiter/BitTorrentBlocker
+```
 
 ### From Source
 
