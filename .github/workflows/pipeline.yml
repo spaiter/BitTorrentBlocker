@@ -222,34 +222,19 @@ jobs:
 
   build-binaries:
     name: Build ${{ matrix.goos }}-${{ matrix.goarch }}
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     needs: [prepare-version]
     if: needs.prepare-version.outputs.should_release == 'true'
 
     strategy:
       matrix:
         include:
-          - os: ubuntu-latest
-            goos: linux
+          - goos: linux
             goarch: amd64
-          - os: ubuntu-latest
-            goos: linux
+          - goos: linux
             goarch: arm64
-          - os: ubuntu-latest
-            goos: linux
+          - goos: linux
             goarch: arm
-          - os: windows-latest
-            goos: windows
-            goarch: amd64
-          - os: windows-latest
-            goos: windows
-            goarch: arm64
-          - os: macos-latest
-            goos: darwin
-            goarch: amd64
-          - os: macos-latest
-            goos: darwin
-            goarch: arm64
 
     steps:
       - uses: actions/checkout@v4
@@ -260,7 +245,6 @@ jobs:
           go-version: '1.20'
 
       - name: Install Linux dependencies
-        if: matrix.goos == 'linux' && matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
           sudo apt-get install -y libpcap-dev
@@ -276,22 +260,19 @@ jobs:
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
-          CGO_ENABLED: ${{ matrix.goos == 'linux' && '1' || '0' }}
+          CGO_ENABLED: 1
           VERSION: ${{ needs.prepare-version.outputs.version }}
           COMMIT: ${{ github.sha }}
         run: |
           # Set CC for cross-compilation
-          if [ "${{ matrix.goos }}" = "linux" ] && [ "${{ matrix.goarch }}" = "arm64" ]; then
+          if [ "${{ matrix.goarch }}" = "arm64" ]; then
             export CC=aarch64-linux-gnu-gcc
-          elif [ "${{ matrix.goos }}" = "linux" ] && [ "${{ matrix.goarch }}" = "arm" ]; then
+          elif [ "${{ matrix.goarch }}" = "arm" ]; then
             export CC=arm-linux-gnueabihf-gcc
           fi
 
           # Build
           BINARY_NAME="btblocker-${{ matrix.goos }}-${{ matrix.goarch }}"
-          if [ "${{ matrix.goos }}" = "windows" ]; then
-            BINARY_NAME="${BINARY_NAME}.exe"
-          fi
 
           go build -v \
             -ldflags="-s -w -X main.Version=${VERSION} -X main.Commit=${COMMIT}" \
