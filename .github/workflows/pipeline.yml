@@ -247,13 +247,18 @@ jobs:
       - name: Install Linux dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libpcap-dev
 
-          # Cross-compilation tools
+          # Install libpcap and cross-compilation tools based on target architecture
           if [ "${{ matrix.goarch }}" = "arm64" ]; then
-            sudo apt-get install -y gcc-aarch64-linux-gnu
+            sudo dpkg --add-architecture arm64
+            sudo apt-get update
+            sudo apt-get install -y gcc-aarch64-linux-gnu libpcap-dev:arm64
           elif [ "${{ matrix.goarch }}" = "arm" ]; then
-            sudo apt-get install -y gcc-arm-linux-gnueabihf
+            sudo dpkg --add-architecture armhf
+            sudo apt-get update
+            sudo apt-get install -y gcc-arm-linux-gnueabihf libpcap-dev:armhf
+          else
+            sudo apt-get install -y libpcap-dev
           fi
 
       - name: Build binary
@@ -264,11 +269,13 @@ jobs:
           VERSION: ${{ needs.prepare-version.outputs.version }}
           COMMIT: ${{ github.sha }}
         run: |
-          # Set CC for cross-compilation
+          # Set CC and PKG_CONFIG for cross-compilation
           if [ "${{ matrix.goarch }}" = "arm64" ]; then
             export CC=aarch64-linux-gnu-gcc
+            export PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig
           elif [ "${{ matrix.goarch }}" = "arm" ]; then
             export CC=arm-linux-gnueabihf-gcc
+            export PKG_CONFIG_PATH=/usr/lib/arm-linux-gnueabihf/pkgconfig
           fi
 
           # Build
