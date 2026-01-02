@@ -66,17 +66,28 @@ in {
       default = "info";
       description = "Logging level (error, warn, info, debug)";
     };
+
+    firewallBackend = mkOption {
+      type = types.enum [ "nftables" "iptables" ];
+      default = "nftables";
+      description = "Firewall backend to use for DROP rules (nftables or iptables)";
+    };
+
+    cleanupOnStop = mkOption {
+      type = types.bool;
+      default = false;
+      description = "Whether to destroy ipset and clear all banned IPs when service stops";
+    };
   };
 
   config = mkIf cfg.enable {
     # Load required kernel modules for ipset
     boot.kernelModules = [ "ip_set" "ip_set_hash_ip" ];
 
-    # Ensure nftables and ipset are available
+    # Ensure firewall tools and ipset are available
     environment.systemPackages = with pkgs; [
       ipset
-      nftables
-    ];
+    ] ++ (if cfg.firewallBackend == "nftables" then [ nftables ] else [ iptables ]);
 
     # Create systemd service
     systemd.services.btblocker = {
@@ -84,11 +95,10 @@ in {
       after = [ "network.target" ];
       wantedBy = [ "multi-user.target" ];
 
-      # Ensure ipset and other tools are available in the service's PATH
+      # Ensure ipset and firewall tools are available in the service's PATH
       path = with pkgs; [
         ipset
-        nftables
-      ];
+      ] ++ (if cfg.firewallBackend == "nftables" then [ nftables ] else [ iptables ]);
 
       serviceConfig = {
         Type = "simple";
@@ -101,7 +111,7 @@ in {
           "LOG_LEVEL=${cfg.logLevel}"
           "INTERFACE=${cfg.interface}"
           "BAN_DURATION=${toString cfg.banDuration}"
-          "PATH=${pkgs.lib.makeBinPath [ pkgs.ipset pkgs.nftables ]}"
+          "PATH=${pkgs.lib.makeBinPath ([ pkgs.ipset ] ++ (if cfg.firewallBackend == "nftables" then [ pkgs.nftables ] else [ pkgs.iptables ]))}"
         ];
 
         # Security hardening
@@ -117,23 +127,46 @@ in {
       };
 
       preStart = ''
-        # Create ipset for banned IPs (ignore if exists)
-        ${pkgs.ipset}/bin/ipset create ${cfg.ipsetName} hash:ip timeout ${toString cfg.banDuration} 2>/dev/null || true
+        # Destroy existing ipset to clear all banned IPs and ensure clean state
+        ${pkgs.ipset}/bin/ipset destroy ${cfg.ipsetName} 2>/dev/null || true
 
-        # Configure nftables rules to drop packets from banned IPs
-        ${pkgs.nftables}/bin/nft add table inet btblocker 2>/dev/null || true
-        ${pkgs.nftables}/bin/nft add chain inet btblocker input { type filter hook input priority 0 \; policy accept \; } 2>/dev/null || true
-        ${pkgs.nftables}/bin/nft add chain inet btblocker forward { type filter hook forward priority 0 \; policy accept \; } 2>/dev/null || true
-        ${pkgs.nftables}/bin/nft add rule inet btblocker input ip saddr @${cfg.ipsetName} drop 2>/dev/null || true
-        ${pkgs.nftables}/bin/nft add rule inet btblocker forward ip saddr @${cfg.ipsetName} drop 2>/dev/null || true
+        # Create fresh ipset for banned IPs with configured timeout
+        ${pkgs.ipset}/bin/ipset create ${cfg.ipsetName} hash:ip timeout ${toString cfg.banDuration}
+
+        ${if cfg.firewallBackend == "nftables" then ''
+          # Configure nftables rules to drop packets from banned IPs
+          ${pkgs.nftables}/bin/nft add table inet btblocker 2>/dev/null || true
+          ${pkgs.nftables}/bin/nft add chain inet btblocker input { type filter hook input priority 0 \; policy accept \; } 2>/dev/null || true
+          ${pkgs.nftables}/bin/nft add chain inet btblocker forward { type filter hook forward priority 0 \; policy accept \; } 2>/dev/null || true
+          ${pkgs.nftables}/bin/nft add rule inet btblocker input ip saddr @${cfg.ipsetName} drop 2>/dev/null || true
+          ${pkgs.nftables}/bin/nft add rule inet btblocker forward ip saddr @${cfg.ipsetName} drop 2>/dev/null || true
+        '' else ''
+          # Remove existing iptables rules (if any)
+          ${pkgs.iptables}/bin/iptables -D INPUT -m set --match-set ${cfg.ipsetName} src -j DROP 2>/dev/null || true
+          ${pkgs.iptables}/bin/iptables -D FORWARD -m set --match-set ${cfg.ipsetName} src -j DROP 2>/dev/null || true
+
+          # Add iptables rules to drop packets from banned IPs
+          ${pkgs.iptables}/bin/iptables -I INPUT -m set --match-set ${cfg.ipsetName} src -j DROP
+          ${pkgs.iptables}/bin/iptables -I FORWARD -m set --match-set ${cfg.ipsetName} src -j DROP
+        ''}
       '';
 
       postStop = ''
-        # Clean up nftables rules
-        ${pkgs.nftables}/bin/nft delete table inet btblocker 2>/dev/null || true
+        ${if cfg.firewallBackend == "nftables" then ''
+          # Clean up nftables rules
+          ${pkgs.nftables}/bin/nft delete table inet btblocker 2>/dev/null || true
+        '' else ''
+          # Clean up iptables rules
+          ${pkgs.iptables}/bin/iptables -D INPUT -m set --match-set ${cfg.ipsetName} src -j DROP 2>/dev/null || true
+          ${pkgs.iptables}/bin/iptables -D FORWARD -m set --match-set ${cfg.ipsetName} src -j DROP 2>/dev/null || true
+        ''}
 
-        # Destroy ipset (optional - uncomment to remove banned IPs on stop)
-        # ${pkgs.ipset}/bin/ipset destroy ${cfg.ipsetName} 2>/dev/null || true
+        ${if cfg.cleanupOnStop then ''
+          # Destroy ipset to clear all banned IPs
+          ${pkgs.ipset}/bin/ipset destroy ${cfg.ipsetName} 2>/dev/null || true
+        '' else ''
+          # Keep ipset and banned IPs (they will expire based on timeout)
+        ''}
       '';
     };
 

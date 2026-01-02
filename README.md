@@ -451,6 +451,8 @@ The project includes a complete NixOS module for production deployment with auto
             ipsetName = "torrent_block";  # Name of ipset for banned IPs
             banDuration = 18000;          # Ban duration in seconds (5 hours)
             logLevel = "info";            # Log level: error, warn, info, debug
+            firewallBackend = "nftables"; # Firewall backend: nftables or iptables
+            cleanupOnStop = false;        # Keep banned IPs when service stops
           };
         }
       ];
@@ -495,10 +497,54 @@ in
 **What gets configured automatically:**
 - ✅ Binary installed from Cachix cache (instant installation)
 - ✅ Systemd service with CAP_NET_ADMIN capability
-- ✅ ipset created with 5-hour timeout
-- ✅ nftables rules for dropping banned IPs
+- ✅ ipset created and destroyed on service start for clean state
+- ✅ Firewall rules (nftables or iptables) for dropping banned IPs
 - ✅ Automatic service restart on failure
 - ✅ Kernel modules loaded (ip_set, ip_set_hash_ip)
+
+**Configuration Options:**
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `enable` | bool | `false` | Enable the btblocker service |
+| `interface` | string | `"eth0"` | Network interface to monitor |
+| `entropyThreshold` | float | `7.6` | Entropy threshold for encrypted traffic detection |
+| `minPayloadSize` | int | `60` | Minimum payload size for analysis |
+| `ipsetName` | string | `"torrent_block"` | Name of ipset for banned IPs |
+| `banDuration` | int | `18000` | Ban duration in seconds (default: 5 hours) |
+| `logLevel` | enum | `"info"` | Log level: `error`, `warn`, `info`, `debug` |
+| `firewallBackend` | enum | `"nftables"` | Firewall backend: `nftables` or `iptables` |
+| `cleanupOnStop` | bool | `false` | Destroy ipset and clear banned IPs when service stops |
+
+**Firewall Backend Selection:**
+- `nftables` (default, recommended) - Modern Linux firewall
+- `iptables` - Legacy firewall (use if nftables unavailable)
+
+**Examples:**
+
+```nix
+# Example 1: Testing with short ban duration (30 seconds)
+services.btblocker = {
+  enable = true;
+  interface = "awg0";
+  banDuration = 30;
+  logLevel = "debug";
+};
+
+# Example 2: Using iptables backend instead of nftables
+services.btblocker = {
+  enable = true;
+  interface = "eth0";
+  firewallBackend = "iptables";
+};
+
+# Example 3: Clean up banned IPs when service stops
+services.btblocker = {
+  enable = true;
+  interface = "wg0";
+  cleanupOnStop = true;  # Banned IPs cleared on service stop
+};
+```
 
 **After configuration:**
 ```bash
@@ -510,6 +556,9 @@ sudo systemctl status btblocker
 
 # View logs
 sudo journalctl -u btblocker -f
+
+# Check banned IPs
+sudo ipset list torrent_block
 ```
 
 ## Detection Accuracy
