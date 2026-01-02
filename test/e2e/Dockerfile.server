@@ -4,8 +4,7 @@ FROM golang:1.20-alpine
 # Install dependencies
 RUN apk add --no-cache \
     linux-headers \
-    libnetfilter_queue-dev \
-    libnfnetlink-dev \
+    libpcap-dev \
     iptables \
     ipset \
     make \
