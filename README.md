@@ -169,6 +169,12 @@ Add BitTorrentBlocker to your system flake and import the module:
 
         # Configure btblocker
         {
+          # IMPORTANT: Apply the overlay to make pkgs.btblocker available
+          # (btblocker is not in nixpkgs yet, so this is required)
+          nixpkgs.overlays = [
+            bittorrent-blocker.overlays.default
+          ];
+
           services.btblocker = {
             enable = true;
             interface = "eth0";  # Your network interface
@@ -488,6 +494,11 @@ The project includes a complete NixOS module for production deployment with auto
       modules = [
         bittorrent-blocker.nixosModules.default
         {
+          # IMPORTANT: Apply the overlay (btblocker not in nixpkgs yet)
+          nixpkgs.overlays = [
+            bittorrent-blocker.overlays.default
+          ];
+
           services.btblocker = {
             enable = true;
             interface = "eth0";           # Your main network interface
