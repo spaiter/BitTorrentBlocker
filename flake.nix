@@ -18,7 +18,8 @@
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
-        version = "0.7.7";  # Replaced by CI/CD pipeline during builds
+        # Automatically extract version from main.go
+        version = builtins.head (builtins.match ''.*Version = "([0-9]+\.[0-9]+\.[0-9]+)".*'' (builtins.readFile ./cmd/btblocker/main.go));
       in
       {
         packages = {
