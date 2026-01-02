@@ -6,8 +6,7 @@ RUN apk add --no-cache \
     gcc \
     musl-dev \
     linux-headers \
-    libnetfilter_queue-dev \
-    libnfnetlink-dev \
+    libpcap-dev \
     make
 
 WORKDIR /build
@@ -35,8 +34,7 @@ FROM alpine:latest
 
 # Install runtime dependencies
 RUN apk add --no-cache \
-    libnetfilter_queue \
-    libnfnetlink \
+    libpcap \
     iptables \
     ipset \
     ca-certificates
