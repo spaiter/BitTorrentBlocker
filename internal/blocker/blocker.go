@@ -3,6 +3,7 @@ package blocker
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
@@ -71,6 +72,18 @@ func (b *Blocker) Start(ctx context.Context) error {
 	}
 }
 
+// formatDuration converts seconds to a human-readable duration string
+func formatDuration(seconds int) string {
+	d := time.Duration(seconds) * time.Second
+	hours := int(d.Hours())
+	minutes := int(d.Minutes()) % 60
+
+	if minutes == 0 {
+		return fmt.Sprintf("%dh", hours)
+	}
+	return fmt.Sprintf("%dh%dm", hours, minutes)
+}
+
 // processPacket analyzes a single packet and bans IP if BitTorrent is detected
 func (b *Blocker) processPacket(packet gopacket.Packet) {
 	var remoteIP string
@@ -119,7 +132,8 @@ func (b *Blocker) processPacket(packet gopacket.Packet) {
 		if isUDP {
 			proto = "UDP"
 		}
-		b.logger.Info("[DETECT] %s %s:%d (%s) - Banning for 5h", proto, remoteIP, srcPort, result.Reason)
+		duration := formatDuration(b.config.BanDuration)
+		b.logger.Info("[DETECT] %s %s:%d (%s) - Banning for %s", proto, remoteIP, srcPort, result.Reason, duration)
 
 		if err := b.banManager.BanIP(remoteIP); err != nil {
 			b.logger.Error("Failed to ban IP %s: %v", remoteIP, err)
