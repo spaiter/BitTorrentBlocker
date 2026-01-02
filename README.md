@@ -169,8 +169,9 @@ Add BitTorrentBlocker to your system flake and import the module:
 
         # Configure btblocker
         {
-          # IMPORTANT: Apply the overlay to make pkgs.btblocker available
-          # (btblocker is not in nixpkgs yet, so this is required)
+          # IMPORTANT: Apply the overlay HERE in flake.nix to make pkgs.btblocker available
+          # The overlay MUST be in flake.nix where it has access to the bittorrent-blocker input.
+          # Do NOT move this to a separate module file - it will fail with "undefined variable".
           nixpkgs.overlays = [
             bittorrent-blocker.overlays.default
           ];
@@ -494,7 +495,8 @@ The project includes a complete NixOS module for production deployment with auto
       modules = [
         bittorrent-blocker.nixosModules.default
         {
-          # IMPORTANT: Apply the overlay (btblocker not in nixpkgs yet)
+          # IMPORTANT: Apply the overlay HERE in flake.nix (btblocker not in nixpkgs yet)
+          # The overlay MUST be in flake.nix where it has access to the bittorrent-blocker input.
           nixpkgs.overlays = [
             bittorrent-blocker.overlays.default
           ];
