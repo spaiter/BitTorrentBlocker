@@ -67,12 +67,29 @@ internal/blocker/
   └── config.go            - Configuration management
 ```
 
+## How It Works
+
+The blocker uses **passive packet monitoring** (like ndpiReader/Wireshark):
+
+1. **Captures** packet copies via libpcap without blocking traffic flow
+2. **Analyzes** packets asynchronously in background goroutines
+3. **Detects** BitTorrent traffic using 11 complementary DPI techniques
+4. **Bans** detected IPs via Linux ipset for 5 hours
+5. **Blocks** traffic from banned IPs using pre-configured nftables/iptables rules
+
+**Key advantages:**
+- ✅ Zero latency - traffic flows normally during analysis
+- ✅ No packet verdict delays - analysis happens in background
+- ✅ Simpler setup - no iptables NFQUEUE rules needed
+- ✅ Better performance - asynchronous processing
+
 ## Prerequisites
 
 - Go 1.20 or later
-- Linux with netfilter/nfqueue support
+- Linux with libpcap support (standard on most distributions)
 - ipset utility (for IP banning)
-- Root/CAP_NET_ADMIN privileges
+- nftables or iptables (for DROP rules)
+- Root/CAP_NET_ADMIN privileges (for packet capture and ipset)
 
 ## Installation
 
@@ -122,21 +139,53 @@ EOF
 docker compose up -d
 ```
 
-### NixOS / Nix
+### NixOS / Nix (Recommended for NixOS users)
 
+The blocker includes a complete NixOS module with automatic setup:
+
+```nix
+# flake.nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    bittorrent-blocker.url = "github:spaiter/BitTorrentBlocker";
+  };
+
+  outputs = { self, nixpkgs, bittorrent-blocker }: {
+    nixosConfigurations.myhost = nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      modules = [
+        bittorrent-blocker.nixosModules.default
+        {
+          services.btblocker = {
+            enable = true;
+            interface = "eth0";  # Your main network interface
+            logLevel = "info";
+          };
+        }
+      ];
+    };
+  };
+}
+```
+
+**What the NixOS module does automatically:**
+- ✅ Installs btblocker binary from Cachix (pre-built)
+- ✅ Creates systemd service with proper capabilities
+- ✅ Sets up ipset for banned IPs with 5-hour timeout
+- ✅ Configures nftables DROP rules for banned IPs
+- ✅ Handles service restarts gracefully
+
+**Quick test without installing:**
 ```bash
-# Try it without installing
+# Try it on any Linux with Nix
 nix run github:spaiter/BitTorrentBlocker
 
 # Install to your profile
 nix profile install github:spaiter/BitTorrentBlocker
-
-# Or add to your NixOS configuration (see docs/NIX_INSTALLATION.md)
 ```
 
-Binary cache available at https://btblocker.cachix.org
-
-See [NIX_INSTALLATION.md](docs/NIX_INSTALLATION.md) for complete NixOS installation guide.
+Binary cache available at https://btblocker.cachix.org - Nix will prompt to trust it on first use.
 
 ### From Source
 
@@ -162,22 +211,38 @@ go build -o bin/btblocker ./cmd/btblocker
 ```bash
 # Run with default configuration (requires root)
 sudo ./bin/btblocker
+
+# The blocker will:
+# 1. Start capturing packets on eth0 (default interface)
+# 2. Analyze traffic in the background
+# 3. Automatically ban detected IPs via ipset
 ```
 
-### Setup iptables Rules
+### Manual Setup (if not using NixOS module)
 
-Before running the blocker, configure iptables to send traffic to nfqueue:
+Before running the blocker, set up ipset and firewall rules:
 
 ```bash
-# Create ipset for banned IPs
+# 1. Create ipset for banned IPs (5-hour timeout)
 sudo ipset create torrent_block hash:ip timeout 18000
 
-# Send traffic to nfqueue (adjust interface as needed)
-sudo iptables -I FORWARD -j NFQUEUE --queue-num 0
+# 2. Configure firewall to DROP traffic from banned IPs
+# Using nftables (recommended):
+sudo nft add table inet btblocker
+sudo nft add chain inet btblocker input { type filter hook input priority 0 \; policy accept \; }
+sudo nft add chain inet btblocker forward { type filter hook forward priority 0 \; policy accept \; }
+sudo nft add rule inet btblocker input ip saddr @torrent_block drop
+sudo nft add rule inet btblocker forward ip saddr @torrent_block drop
 
-# Block IPs in the ipset
+# OR using iptables (alternative):
+sudo iptables -I INPUT -m set --match-set torrent_block src -j DROP
 sudo iptables -I FORWARD -m set --match-set torrent_block src -j DROP
+
+# 3. Run the blocker
+sudo INTERFACE=eth0 LOG_LEVEL=info ./bin/btblocker
 ```
+
+**Note:** The NixOS module handles all of this automatically.
 
 ### Configuration
 
@@ -185,20 +250,29 @@ The blocker uses sensible defaults but can be customized:
 
 ```go
 config := blocker.Config{
-    QueueNum:         0,      // NFQUEUE number
-    EntropyThreshold: 7.6,    // Entropy threshold for encrypted traffic
-    MinPayloadSize:   60,     // Minimum payload size for analysis
+    Interface:        "eth0",  // Network interface to monitor
+    EntropyThreshold: 7.6,     // Entropy threshold for encrypted traffic
+    MinPayloadSize:   60,      // Minimum payload size for analysis
     IPSetName:        "torrent_block",
-    BanDuration:      18000,  // 5 hours in seconds
-    LogLevel:         "info", // Log level: error, warn, info, debug
+    BanDuration:      18000,   // 5 hours in seconds
+    LogLevel:         "info",  // Log level: error, warn, info, debug
 }
 ```
+
+**Environment Variables:**
+- `INTERFACE` - Network interface to monitor (default: `eth0`)
+- `LOG_LEVEL` - Logging verbosity (default: `info`)
 
 **Log Levels:**
 - `error` - Only critical errors
 - `warn` - Warnings and errors
-- `info` - General information, warnings, and errors (default)
-- `debug` - Detailed traffic analysis including blocked/allowed packets
+- `info` - General information, detection events (default)
+- `debug` - Detailed packet analysis including whitelisted traffic
+
+**Example with custom interface:**
+```bash
+sudo INTERFACE=ens33 LOG_LEVEL=debug ./bin/btblocker
+```
 
 ## How It Works
 
@@ -346,18 +420,92 @@ make run
 
 ### NixOS
 
-The project includes a complete NixOS module for production deployment:
+The project includes a complete NixOS module for production deployment with automatic setup:
+
+**Using flakes (recommended):**
+
+```nix
+# flake.nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    bittorrent-blocker.url = "github:spaiter/BitTorrentBlocker";
+  };
+
+  outputs = { self, nixpkgs, bittorrent-blocker }: {
+    nixosConfigurations.myhost = nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      modules = [
+        bittorrent-blocker.nixosModules.default
+        {
+          services.btblocker = {
+            enable = true;
+            interface = "eth0";           # Your main network interface
+            entropyThreshold = 7.6;       # Encrypted traffic detection threshold
+            minPayloadSize = 60;          # Minimum packet size for analysis
+            ipsetName = "torrent_block";  # Name of ipset for banned IPs
+            banDuration = 18000;          # Ban duration in seconds (5 hours)
+            logLevel = "info";            # Log level: error, warn, info, debug
+          };
+        }
+      ];
+    };
+  };
+}
+```
+
+**Using traditional configuration.nix:**
 
 ```nix
 # /etc/nixos/configuration.nix
-services.btblocker = {
-  enable = true;
-  interfaces = [ "eth0" ];
-  entropyThreshold = 7.6;
-};
+{ config, pkgs, ... }:
+let
+  bittorrent-blocker = builtins.fetchGit {
+    url = "https://github.com/spaiter/BitTorrentBlocker";
+    ref = "main";
+  };
+in
+{
+  imports = [
+    "${bittorrent-blocker}/nix/module.nix"
+  ];
+
+  # Apply the overlay to make btblocker available
+  nixpkgs.overlays = [
+    (final: prev: {
+      btblocker = (import bittorrent-blocker {
+        system = prev.system;
+      }).packages.${prev.system}.btblocker;
+    })
+  ];
+
+  services.btblocker = {
+    enable = true;
+    interface = "eth0";
+    logLevel = "info";
+  };
+}
 ```
 
-See [docs/NIXOS_DEPLOYMENT.md](docs/NIXOS_DEPLOYMENT.md) for complete deployment guide.
+**What gets configured automatically:**
+- ✅ Binary installed from Cachix cache (instant installation)
+- ✅ Systemd service with CAP_NET_ADMIN capability
+- ✅ ipset created with 5-hour timeout
+- ✅ nftables rules for dropping banned IPs
+- ✅ Automatic service restart on failure
+- ✅ Kernel modules loaded (ip_set, ip_set_hash_ip)
+
+**After configuration:**
+```bash
+# Rebuild your system
+sudo nixos-rebuild switch
+
+# Check service status
+sudo systemctl status btblocker
+
+# View logs
+sudo journalctl -u btblocker -f
+```
 
 ## Detection Accuracy
 
