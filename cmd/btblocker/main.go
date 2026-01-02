@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 
 	"github.com/example/BitTorrentBlocker/internal/blocker"
@@ -19,6 +20,19 @@ var (
 	Commit  = "dev"
 	Date    = "unknown"
 )
+
+// splitAndTrim splits a string by separator and trims whitespace from each part
+func splitAndTrim(s, sep string) []string {
+	parts := strings.Split(s, sep)
+	result := make([]string, 0, len(parts))
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed != "" {
+			result = append(result, trimmed)
+		}
+	}
+	return result
+}
 
 func main() {
 	// Define flags
@@ -40,7 +54,13 @@ func main() {
 		config.LogLevel = logLevel
 	}
 	if iface := os.Getenv("INTERFACE"); iface != "" {
-		config.Interface = iface
+		// Support comma-separated list of interfaces
+		config.Interfaces = []string{}
+		for _, i := range splitAndTrim(iface, ",") {
+			if i != "" {
+				config.Interfaces = append(config.Interfaces, i)
+			}
+		}
 	}
 	if banDuration := os.Getenv("BAN_DURATION"); banDuration != "" {
 		if duration, err := strconv.Atoi(banDuration); err == nil && duration > 0 {
@@ -55,8 +75,8 @@ func main() {
 	defer btBlocker.Close()
 
 	log.Println("BitTorrent Blocker (Passive Monitoring) Started...")
-	log.Printf("Configuration: Interface=%s, EntropyThreshold=%.2f, MinPayload=%d",
-		config.Interface, config.EntropyThreshold, config.MinPayloadSize)
+	log.Printf("Configuration: Interfaces=%v, EntropyThreshold=%.2f, MinPayload=%d",
+		config.Interfaces, config.EntropyThreshold, config.MinPayloadSize)
 
 	// Setup context with cancellation
 	ctx, cancel := context.WithCancel(context.Background())

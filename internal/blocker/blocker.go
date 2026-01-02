@@ -3,6 +3,7 @@ package blocker
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/google/gopacket"
@@ -15,51 +16,104 @@ type Blocker struct {
 	config     Config
 	analyzer   *Analyzer
 	banManager *IPBanManager
-	handle     *pcap.Handle
+	handles    []*pcap.Handle
 	logger     *Logger
 }
 
 // New creates a new BitTorrent blocker instance with passive monitoring (like ndpiReader)
 func New(config Config) (*Blocker, error) {
-	// Open device for passive packet capture
-	handle, err := pcap.OpenLive(
-		config.Interface,  // Network interface to monitor
-		65536,             // Snapshot length (max bytes per packet)
-		true,              // Promiscuous mode
-		pcap.BlockForever, // Read timeout
-	)
-	if err != nil {
-		return nil, fmt.Errorf("could not open interface %s: %w", config.Interface, err)
-	}
-
-	// Set BPF filter to capture only TCP and UDP (optimization)
-	if err := handle.SetBPFFilter("tcp or udp"); err != nil {
-		handle.Close()
-		return nil, fmt.Errorf("could not set BPF filter: %w", err)
+	if len(config.Interfaces) == 0 {
+		return nil, fmt.Errorf("no interfaces specified")
 	}
 
 	logger := NewLogger(config.LogLevel)
+	handles := make([]*pcap.Handle, 0, len(config.Interfaces))
+
+	// Open pcap handles for all interfaces
+	for _, iface := range config.Interfaces {
+		handle, err := pcap.OpenLive(
+			iface,             // Network interface to monitor
+			65536,             // Snapshot length (max bytes per packet)
+			true,              // Promiscuous mode
+			pcap.BlockForever, // Read timeout
+		)
+		if err != nil {
+			// Close any already opened handles
+			for _, h := range handles {
+				h.Close()
+			}
+			return nil, fmt.Errorf("could not open interface %s: %w", iface, err)
+		}
+
+		// Set BPF filter to capture only TCP and UDP (optimization)
+		if err := handle.SetBPFFilter("tcp or udp"); err != nil {
+			handle.Close()
+			for _, h := range handles {
+				h.Close()
+			}
+			return nil, fmt.Errorf("could not set BPF filter on %s: %w", iface, err)
+		}
+
+		handles = append(handles, handle)
+		logger.Info("Opened interface %s for monitoring", iface)
+	}
 
 	return &Blocker{
 		config:     config,
 		analyzer:   NewAnalyzer(config),
 		banManager: NewIPBanManager(config.IPSetName, config.BanDuration),
-		handle:     handle,
+		handles:    handles,
 		logger:     logger,
 	}, nil
 }
 
 // Start begins the passive packet monitoring loop (like ndpiReader)
 func (b *Blocker) Start(ctx context.Context) error {
-	b.logger.Info("BitTorrent blocker started on interface %s (passive monitoring, log level: %s)", b.config.Interface, b.config.LogLevel)
+	b.logger.Info("BitTorrent blocker started on %d interface(s) (passive monitoring, log level: %s)", len(b.config.Interfaces), b.config.LogLevel)
+
+	// Use WaitGroup to wait for all interface monitors to finish
+	var wg sync.WaitGroup
+	errChan := make(chan error, len(b.handles))
+
+	// Start monitoring each interface in a separate goroutine
+	for i, handle := range b.handles {
+		wg.Add(1)
+		go func(iface string, h *pcap.Handle) {
+			defer wg.Done()
+			if err := b.monitorInterface(ctx, iface, h); err != nil && err != context.Canceled {
+				errChan <- err
+			}
+		}(b.config.Interfaces[i], handle)
+	}
+
+	// Wait for all goroutines to finish
+	go func() {
+		wg.Wait()
+		close(errChan)
+	}()
+
+	// Return first error if any
+	for err := range errChan {
+		if err != nil {
+			return err
+		}
+	}
+
+	return ctx.Err()
+}
+
+// monitorInterface monitors a single interface for packets
+func (b *Blocker) monitorInterface(ctx context.Context, iface string, handle *pcap.Handle) error {
+	b.logger.Info("Started monitoring interface %s", iface)
 
 	// Create packet source from pcap handle
-	packetSource := gopacket.NewPacketSource(b.handle, b.handle.LinkType())
+	packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
 
 	// Process packets asynchronously
 	for {
 		select {
 		case <-ctx.Done():
+			b.logger.Info("Stopped monitoring interface %s", iface)
 			return ctx.Err()
 		case packet := <-packetSource.Packets():
 			if packet == nil {
@@ -67,7 +121,7 @@ func (b *Blocker) Start(ctx context.Context) error {
 			}
 
 			// Process packet in background (non-blocking, like ndpiReader)
-			go b.processPacket(packet)
+			go b.processPacket(packet, iface)
 		}
 	}
 }
@@ -85,7 +139,7 @@ func formatDuration(seconds int) string {
 }
 
 // processPacket analyzes a single packet and bans IP if BitTorrent is detected
-func (b *Blocker) processPacket(packet gopacket.Packet) {
+func (b *Blocker) processPacket(packet gopacket.Packet, iface string) {
 	var remoteIP string
 	var srcPort, dstPort uint16
 	var appLayer []byte
@@ -115,7 +169,7 @@ func (b *Blocker) processPacket(packet gopacket.Packet) {
 
 	// Whitelist check
 	if WhitelistPorts[srcPort] || WhitelistPorts[dstPort] {
-		b.logger.Debug("Whitelisted port: %s:%d -> %d", remoteIP, srcPort, dstPort)
+		b.logger.Debug("[%s] Whitelisted port: %s:%d -> %d", iface, remoteIP, srcPort, dstPort)
 		return
 	}
 
@@ -133,18 +187,20 @@ func (b *Blocker) processPacket(packet gopacket.Packet) {
 			proto = "UDP"
 		}
 		duration := formatDuration(b.config.BanDuration)
-		b.logger.Info("[DETECT] %s %s:%d (%s) - Banning for %s", proto, remoteIP, srcPort, result.Reason, duration)
+		b.logger.Info("[%s] [DETECT] %s %s:%d (%s) - Banning for %s", iface, proto, remoteIP, srcPort, result.Reason, duration)
 
 		if err := b.banManager.BanIP(remoteIP); err != nil {
-			b.logger.Error("Failed to ban IP %s: %v", remoteIP, err)
+			b.logger.Error("[%s] Failed to ban IP %s: %v", iface, remoteIP, err)
 		}
 	}
 }
 
 // Close cleans up resources
 func (b *Blocker) Close() error {
-	if b.handle != nil {
-		b.handle.Close()
+	for _, handle := range b.handles {
+		if handle != nil {
+			handle.Close()
+		}
 	}
 	return nil
 }

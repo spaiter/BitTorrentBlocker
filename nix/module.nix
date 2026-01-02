@@ -27,7 +27,10 @@ in {
     interface = mkOption {
       type = types.str;
       default = "eth0";
-      description = "Network interface to monitor";
+      description = ''
+        Network interface(s) to monitor. Can be a single interface or comma-separated
+        list (e.g., "eth0" or "eth0,wg0,awg0")
+      '';
     };
 
     entropyThreshold = mkOption {

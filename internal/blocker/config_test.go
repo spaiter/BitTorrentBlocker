@@ -12,7 +12,7 @@ func TestDefaultConfig(t *testing.T) {
 		got      interface{}
 		expected interface{}
 	}{
-		{"Interface", config.Interface, "eth0"},
+		{"Interfaces", len(config.Interfaces) == 1 && config.Interfaces[0] == "eth0", true},
 		{"EntropyThreshold", config.EntropyThreshold, 7.6},
 		{"MinPayloadSize", config.MinPayloadSize, 60},
 		{"IPSetName", config.IPSetName, "torrent_block"},
@@ -42,7 +42,7 @@ func TestConfigValidation(t *testing.T) {
 		{
 			name: "Custom valid config",
 			config: Config{
-				Interface:        "eth0",
+				Interfaces:       []string{"eth0"},
 				EntropyThreshold: 8.0,
 				MinPayloadSize:   100,
 				IPSetName:        "custom_set",
@@ -53,7 +53,7 @@ func TestConfigValidation(t *testing.T) {
 		{
 			name: "Zero entropy threshold",
 			config: Config{
-				Interface:        "eth0",
+				Interfaces:       []string{"eth0"},
 				EntropyThreshold: 0,
 				MinPayloadSize:   60,
 				IPSetName:        "test",
@@ -64,7 +64,7 @@ func TestConfigValidation(t *testing.T) {
 		{
 			name: "Empty IPSetName",
 			config: Config{
-				Interface:        "eth0",
+				Interfaces:       []string{"eth0"},
 				EntropyThreshold: 7.6,
 				MinPayloadSize:   60,
 				IPSetName:        "",
@@ -89,15 +89,15 @@ func TestConfigValidation(t *testing.T) {
 func TestConfigCustomValues(t *testing.T) {
 	// Test that custom config values are properly stored and used
 	config := Config{
-		Interface:        "eth0",
+		Interfaces:       []string{"eth0"},
 		EntropyThreshold: 6.5,
 		MinPayloadSize:   128,
 		IPSetName:        "custom_blocker",
 		BanDuration:      86400, // 24 hours
 	}
 
-	if config.Interface != "eth0" {
-		t.Errorf("Interface = %v, want \"eth0\"", config.Interface)
+	if len(config.Interfaces) != 1 || config.Interfaces[0] != "eth0" {
+		t.Errorf("Interfaces = %v, want [\"eth0\"]", config.Interfaces)
 	}
 
 	if config.EntropyThreshold != 6.5 {
@@ -119,7 +119,7 @@ func TestConfigCustomValues(t *testing.T) {
 
 func TestConfigInAnalyzer(t *testing.T) {
 	config := Config{
-		Interface:        "eth0",
+		Interfaces:       []string{"eth0"},
 		EntropyThreshold: 9.0, // Very high threshold
 		MinPayloadSize:   200, // Large minimum size
 		IPSetName:        "test",
