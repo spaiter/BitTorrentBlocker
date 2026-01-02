@@ -121,9 +121,9 @@ in {
         ProtectHome = true;
         ReadWritePaths = [ "/proc" "/sys" ];
 
-        # Capabilities
-        AmbientCapabilities = [ "CAP_NET_ADMIN" ];
-        CapabilityBoundingSet = [ "CAP_NET_ADMIN" ];
+        # Capabilities (applies to preStart, ExecStart, and postStop)
+        AmbientCapabilities = [ "CAP_NET_ADMIN" "CAP_NET_RAW" ];
+        CapabilityBoundingSet = [ "CAP_NET_ADMIN" "CAP_NET_RAW" ];
       };
 
       preStart = ''
