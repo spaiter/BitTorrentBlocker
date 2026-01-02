@@ -215,6 +215,23 @@ jobs:
           echo "version=${NEW_VERSION}" >> $GITHUB_OUTPUT
           echo "tag=v${NEW_VERSION}" >> $GITHUB_OUTPUT
 
+      - name: Update version in main.go
+        if: steps.check.outputs.should_release == 'true'
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          sed -i "s/Version = \"[^\"]*\"/Version = \"${VERSION}\"/" cmd/btblocker/main.go
+          echo "Updated main.go to version ${VERSION}"
+          grep "Version = " cmd/btblocker/main.go
+
+      - name: Commit version update
+        if: steps.check.outputs.should_release == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add cmd/btblocker/main.go
+          git commit -m "chore: bump version to ${{ steps.version.outputs.version }}"
+          git push origin main
+
 
   # ============================================================================
   # STAGE 3: BUILD (with updated version)
