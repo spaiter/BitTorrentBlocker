@@ -35,6 +35,7 @@ The tool provides **defense-in-depth** - even if users don't intend to violate p
 
 ## Features
 
+- **Multi-Interface Support**: Monitor multiple network interfaces simultaneously (e.g., eth0, wg0, awg0)
 - **Multi-Protocol Detection**: Identifies BitTorrent traffic over TCP and UDP
 - **Deep Packet Inspection**: Uses signature-based and behavioral analysis
 - **Protocol Coverage**:
@@ -178,7 +179,8 @@ Add BitTorrentBlocker to your system flake and import the module:
 
           services.btblocker = {
             enable = true;
-            interface = "eth0";  # Your network interface
+            interface = "eth0";  # Single interface
+            # or multiple interfaces: "eth0,wg0,awg0" (comma-separated)
             logLevel = "info";
 
             # Optional: customize settings
@@ -268,6 +270,14 @@ sudo ./bin/btblocker
 # 1. Start capturing packets on eth0 (default interface)
 # 2. Analyze traffic in the background
 # 3. Automatically ban detected IPs via ipset
+
+# Monitor multiple interfaces simultaneously
+sudo INTERFACE=eth0,wg0,awg0 ./bin/btblocker
+
+# The blocker will:
+# 1. Start monitoring all specified interfaces concurrently
+# 2. Process packets from each interface in parallel
+# 3. Include interface name in all log messages
 ```
 
 ### Manual Setup (if not using NixOS module)
@@ -302,17 +312,19 @@ The blocker uses sensible defaults but can be customized:
 
 ```go
 config := blocker.Config{
-    Interface:        "eth0",  // Network interface to monitor
-    EntropyThreshold: 7.6,     // Entropy threshold for encrypted traffic
-    MinPayloadSize:   60,      // Minimum payload size for analysis
+    Interfaces:       []string{"eth0"},  // Network interfaces to monitor
+    EntropyThreshold: 7.6,               // Entropy threshold for encrypted traffic
+    MinPayloadSize:   60,                // Minimum payload size for analysis
     IPSetName:        "torrent_block",
-    BanDuration:      18000,   // 5 hours in seconds
-    LogLevel:         "info",  // Log level: error, warn, info, debug
+    BanDuration:      18000,             // 5 hours in seconds
+    LogLevel:         "info",            // Log level: error, warn, info, debug
 }
 ```
 
 **Environment Variables:**
-- `INTERFACE` - Network interface to monitor (default: `eth0`)
+- `INTERFACE` - Network interface(s) to monitor (default: `eth0`)
+  - Single interface: `INTERFACE=eth0`
+  - Multiple interfaces: `INTERFACE=eth0,wg0,awg0` (comma-separated)
 - `LOG_LEVEL` - Logging verbosity (default: `info`)
 - `BAN_DURATION` - Ban duration in seconds (default: `18000` = 5 hours)
 
@@ -327,8 +339,14 @@ config := blocker.Config{
 # Custom interface and debug logging
 sudo INTERFACE=ens33 LOG_LEVEL=debug ./bin/btblocker
 
+# Monitor multiple interfaces simultaneously
+sudo INTERFACE=eth0,wg0,awg0 LOG_LEVEL=info ./bin/btblocker
+
 # Short ban duration for testing (30 seconds)
 sudo BAN_DURATION=30 ./bin/btblocker
+
+# Multiple interfaces with custom ban duration
+sudo INTERFACE=eth0,ens33 BAN_DURATION=3600 ./bin/btblocker
 ```
 
 ## How It Works
@@ -503,7 +521,7 @@ The project includes a complete NixOS module for production deployment with auto
 
           services.btblocker = {
             enable = true;
-            interface = "eth0";           # Your main network interface
+            interface = "eth0";           # Single or multiple interfaces (comma-separated: "eth0,wg0,awg0")
             entropyThreshold = 7.6;       # Encrypted traffic detection threshold
             minPayloadSize = 60;          # Minimum packet size for analysis
             ipsetName = "torrent_block";  # Name of ipset for banned IPs
@@ -565,7 +583,7 @@ in
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `enable` | bool | `false` | Enable the btblocker service |
-| `interface` | string | `"eth0"` | Network interface to monitor |
+| `interface` | string | `"eth0"` | Network interface(s) to monitor (comma-separated for multiple: `"eth0,wg0,awg0"`) |
 | `entropyThreshold` | float | `7.6` | Entropy threshold for encrypted traffic detection |
 | `minPayloadSize` | int | `60` | Minimum payload size for analysis |
 | `ipsetName` | string | `"torrent_block"` | Name of ipset for banned IPs |
@@ -589,14 +607,21 @@ services.btblocker = {
   logLevel = "debug";
 };
 
-# Example 2: Using iptables backend instead of nftables
+# Example 2: Monitor multiple interfaces simultaneously
+services.btblocker = {
+  enable = true;
+  interface = "eth0,wg0,awg0";  # Comma-separated list
+  logLevel = "info";
+};
+
+# Example 3: Using iptables backend instead of nftables
 services.btblocker = {
   enable = true;
   interface = "eth0";
   firewallBackend = "iptables";
 };
 
-# Example 3: Clean up banned IPs when service stops
+# Example 4: Clean up banned IPs when service stops
 services.btblocker = {
   enable = true;
   interface = "wg0";
