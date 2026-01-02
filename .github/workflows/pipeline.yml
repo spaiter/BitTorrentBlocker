@@ -40,7 +40,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libnetfilter-queue-dev libnfnetlink-dev
+          sudo apt-get install -y libpcap-dev
 
       - name: Run unit tests
         run: go test ./... -v -race -coverprofile=coverage.out -covermode=atomic
@@ -68,7 +68,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libnetfilter-queue-dev libnfnetlink-dev
+          sudo apt-get install -y libpcap-dev
 
       - name: Run integration tests
         run: go test -tags=integration ./test/integration -v
@@ -89,7 +89,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libnetfilter-queue-dev libnfnetlink-dev
+          sudo apt-get install -y libpcap-dev
 
       - name: Build binary
         run: make build
@@ -134,7 +134,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libnetfilter-queue-dev libnfnetlink-dev
+          sudo apt-get install -y libpcap-dev
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v4
@@ -263,7 +263,7 @@ jobs:
         if: matrix.goos == 'linux' && matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libnetfilter-queue-dev libnfnetlink-dev
+          sudo apt-get install -y libpcap-dev
 
           # Cross-compilation tools
           if [ "${{ matrix.goarch }}" = "arm64" ]; then
