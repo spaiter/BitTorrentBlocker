@@ -100,6 +100,7 @@ in {
         Environment = [
           "LOG_LEVEL=${cfg.logLevel}"
           "INTERFACE=${cfg.interface}"
+          "PATH=${pkgs.lib.makeBinPath [ pkgs.ipset pkgs.nftables ]}"
         ];
 
         # Security hardening
