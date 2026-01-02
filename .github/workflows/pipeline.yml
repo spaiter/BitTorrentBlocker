@@ -228,11 +228,8 @@ jobs:
 
     strategy:
       matrix:
-        include:
-          - goos: linux
-            goarch: amd64
-          - goos: linux
-            goarch: arm64
+        goos: [linux]
+        goarch: [amd64]
 
     steps:
       - uses: actions/checkout@v4
@@ -245,15 +242,7 @@ jobs:
       - name: Install Linux dependencies
         run: |
           sudo apt-get update
-
-          # Install libpcap and cross-compilation tools based on target architecture
-          if [ "${{ matrix.goarch }}" = "arm64" ]; then
-            sudo dpkg --add-architecture arm64
-            sudo apt-get update
-            sudo apt-get install -y gcc-aarch64-linux-gnu libpcap-dev:arm64
-          else
-            sudo apt-get install -y libpcap-dev
-          fi
+          sudo apt-get install -y libpcap-dev
 
       - name: Build binary
         env:
@@ -263,13 +252,6 @@ jobs:
           VERSION: ${{ needs.prepare-version.outputs.version }}
           COMMIT: ${{ github.sha }}
         run: |
-          # Set CC and PKG_CONFIG for cross-compilation to ARM64
-          if [ "${{ matrix.goarch }}" = "arm64" ]; then
-            export CC=aarch64-linux-gnu-gcc
-            export PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig
-          fi
-
-          # Build
           BINARY_NAME="btblocker-${{ matrix.goos }}-${{ matrix.goarch }}"
 
           go build -v \
