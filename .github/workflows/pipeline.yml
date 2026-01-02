@@ -233,8 +233,6 @@ jobs:
             goarch: amd64
           - goos: linux
             goarch: arm64
-          - goos: linux
-            goarch: arm
 
     steps:
       - uses: actions/checkout@v4
@@ -253,10 +251,6 @@ jobs:
             sudo dpkg --add-architecture arm64
             sudo apt-get update
             sudo apt-get install -y gcc-aarch64-linux-gnu libpcap-dev:arm64
-          elif [ "${{ matrix.goarch }}" = "arm" ]; then
-            sudo dpkg --add-architecture armhf
-            sudo apt-get update
-            sudo apt-get install -y gcc-arm-linux-gnueabihf libpcap-dev:armhf
           else
             sudo apt-get install -y libpcap-dev
           fi
@@ -269,13 +263,10 @@ jobs:
           VERSION: ${{ needs.prepare-version.outputs.version }}
           COMMIT: ${{ github.sha }}
         run: |
-          # Set CC and PKG_CONFIG for cross-compilation
+          # Set CC and PKG_CONFIG for cross-compilation to ARM64
           if [ "${{ matrix.goarch }}" = "arm64" ]; then
             export CC=aarch64-linux-gnu-gcc
             export PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig
-          elif [ "${{ matrix.goarch }}" = "arm" ]; then
-            export CC=arm-linux-gnueabihf-gcc
-            export PKG_CONFIG_PATH=/usr/lib/arm-linux-gnueabihf/pkgconfig
           fi
 
           # Build
