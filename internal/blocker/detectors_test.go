@@ -688,13 +688,17 @@ func TestCheckMSEEncryption(t *testing.T) {
 			name: "MSE handshake with VC (8 zero bytes)",
 			payload: func() []byte {
 				p := make([]byte, 200)
-				// Fill first 96 bytes with pseudo-random data (DH public key)
+				// Fill first 96 bytes with high-entropy data (simulating DH public key)
+				// Use LCG pseudo-random to get entropy > 7.0
+				seed := uint32(0x12345678)
 				for i := 0; i < 96; i++ {
-					p[i] = byte(i * 17 % 256)
+					seed = (seed*1664525 + 1013904223) // LCG parameters
+					p[i] = byte(seed >> 24)            // Use high bits for better distribution
 				}
-				// Add padding
+				// Add padding with varied data
 				for i := 96; i < 110; i++ {
-					p[i] = byte(i * 13 % 256)
+					seed = (seed*1664525 + 1013904223)
+					p[i] = byte(seed >> 24)
 				}
 				// Insert VC (8 consecutive zero bytes) at offset 110
 				for i := 110; i < 118; i++ {
@@ -708,9 +712,11 @@ func TestCheckMSEEncryption(t *testing.T) {
 			name: "MSE with VC at beginning of search window",
 			payload: func() []byte {
 				p := make([]byte, 150)
-				// First 96 bytes = DH key
+				// First 96 bytes = high-entropy DH key using LCG
+				seed := uint32(0x87654321)
 				for i := 0; i < 96; i++ {
-					p[i] = byte(i % 256)
+					seed = (seed*1664525 + 1013904223)
+					p[i] = byte(seed >> 24)
 				}
 				// VC right after DH key (at offset 96)
 				for i := 96; i < 104; i++ {
@@ -738,11 +744,43 @@ func TestCheckMSEEncryption(t *testing.T) {
 			expected: false,
 		},
 		{
-			name: "Not MSE - has some zeros but not 8 consecutive",
+			name: "Not MSE - high entropy but no VC",
 			payload: func() []byte {
+				// High entropy data but missing the VC marker (like Hysteria2)
 				p := make([]byte, 120)
+				seed := uint32(0xABCDEF01)
 				for i := 0; i < 120; i++ {
-					p[i] = byte(i % 10)
+					seed = (seed*1664525 + 1013904223)
+					p[i] = byte(seed >> 24)
+				}
+				// Ensure no 8 consecutive zeros
+				for i := 0; i < 113; i++ {
+					hasEightZeros := true
+					for j := 0; j < 8; j++ {
+						if p[i+j] != 0 {
+							hasEightZeros = false
+							break
+						}
+					}
+					if hasEightZeros {
+						p[i] = 0x01 // Break the sequence
+					}
+				}
+				return p
+			}(),
+			expected: false,
+		},
+		{
+			name: "Not MSE - has VC but low entropy",
+			payload: func() []byte {
+				// Low entropy DH key with VC marker
+				p := make([]byte, 120)
+				for i := 0; i < 96; i++ {
+					p[i] = byte(i % 10) // Low entropy pattern
+				}
+				// Add VC at offset 96
+				for i := 96; i < 104; i++ {
+					p[i] = 0x00
 				}
 				return p
 			}(),

@@ -266,13 +266,25 @@ func CheckMSEEncryption(payload []byte) bool {
 		return false
 	}
 
-	// Strategy 1: Look for Verification Constant (8 consecutive zero bytes)
+	// Check if first 96 bytes have high entropy (DH public key characteristic)
+	hasHighEntropyKey := false
+	if len(payload) >= 96 {
+		entropy := ShannonEntropy(payload[0:96])
+		// DH public keys should have high entropy (> 6.0)
+		// Typical values: random data ≈ 6.2-6.5, structured data < 5.0
+		if entropy > 6.0 {
+			hasHighEntropyKey = true
+		}
+	}
+
+	// Look for Verification Constant (8 consecutive zero bytes)
 	// Search window: bytes 96-628 (96 + max padding 512 + 20)
 	searchEnd := 628
 	if len(payload) < searchEnd {
 		searchEnd = len(payload)
 	}
 
+	hasVC := false
 	for i := 96; i <= searchEnd-8 && i < len(payload)-8; i++ {
 		// Check for VC (8 consecutive zero bytes)
 		isVC := true
@@ -283,21 +295,14 @@ func CheckMSEEncryption(payload []byte) bool {
 			}
 		}
 		if isVC {
-			return true
+			hasVC = true
+			break
 		}
 	}
 
-	// Strategy 2: Check if first 96 bytes have high entropy (DH public key characteristic)
-	if len(payload) >= 96 {
-		entropy := ShannonEntropy(payload[0:96])
-		// DH public keys should have high entropy (> 7.0)
-		// Combined with connection start = likely MSE
-		if entropy > 7.0 {
-			return true
-		}
-	}
-
-	return false
+	// Require BOTH high entropy DH key AND VC marker to reduce false positives
+	// This prevents flagging other protocols (like Hysteria2) that use high entropy
+	return hasHighEntropyKey && hasVC
 }
 
 // CheckLSD detects Local Service Discovery (LSD) traffic
