@@ -75,8 +75,8 @@ func main() {
 	defer btBlocker.Close()
 
 	log.Println("BitTorrent Blocker (Passive Monitoring) Started...")
-	log.Printf("Configuration: Interfaces=%v, EntropyThreshold=%.2f, MinPayload=%d",
-		config.Interfaces, config.EntropyThreshold, config.MinPayloadSize)
+	log.Printf("Configuration: Interfaces=%v, BanDuration=%ds",
+		config.Interfaces, config.BanDuration)
 
 	// Setup context with cancellation
 	ctx, cancel := context.WithCancel(context.Background())

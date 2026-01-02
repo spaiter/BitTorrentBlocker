@@ -50,12 +50,12 @@ func TestAnalyzer_AnalyzePacket(t *testing.T) {
 			}(),
 			isUDP:       true,
 			shouldBlock: true,
-			reason:      "uTP Protocol",
+			reason:      "uTP Protocol (BEP 29)",
 		},
 		{
-			name: "High entropy payload",
+			name: "Random high entropy payload",
 			payload: func() []byte {
-				// Create data with uniform distribution for entropy > 7.6
+				// Create data with uniform distribution (high entropy but not BitTorrent)
 				p := make([]byte, 256)
 				for i := range p {
 					p[i] = byte(i)
@@ -63,8 +63,8 @@ func TestAnalyzer_AnalyzePacket(t *testing.T) {
 				return p
 			}(),
 			isUDP:       true,
-			shouldBlock: true,
-			reason:      "High Entropy",
+			shouldBlock: false, // No longer blocking based on entropy alone
+			reason:      "",
 		},
 		{
 			name: "SOCKS5 connection",
@@ -109,14 +109,14 @@ func TestAnalyzer_AnalyzePacket(t *testing.T) {
 			payload:     []byte("GET /webseed?info_hash=ABCD1234 HTTP/1.1\r\nHost: seed.example.com\r\n\r\n"),
 			isUDP:       false,
 			shouldBlock: true,
-			reason:      "HTTP BitTorrent Protocol",
+			reason:      "HTTP BitTorrent Protocol (BEP 19)",
 		},
 		{
 			name:        "HTTP BitTorrent User-Agent",
 			payload:     []byte("GET /announce HTTP/1.1\r\nUser-Agent: Azureus 5.7\r\n\r\n"),
 			isUDP:       false,
 			shouldBlock: true,
-			reason:      "HTTP BitTorrent Protocol",
+			reason:      "HTTP BitTorrent Protocol (BEP 19)",
 		},
 	}
 
@@ -132,16 +132,8 @@ func TestAnalyzer_AnalyzePacket(t *testing.T) {
 				t.Errorf("AnalyzePacket() expected reason but got empty string")
 			}
 
-			if tt.shouldBlock && tt.reason != "" {
-				// Check if reason contains expected substring
-				if len(result.Reason) < len(tt.reason) || result.Reason[:len(tt.reason)] != tt.reason {
-					// For High Entropy, just check it starts with "High Entropy"
-					if tt.reason == "High Entropy" && len(result.Reason) < 12 {
-						t.Errorf("AnalyzePacket() Reason = %v, want to start with %v", result.Reason, tt.reason)
-					} else if tt.reason != "High Entropy" && result.Reason != tt.reason {
-						t.Errorf("AnalyzePacket() Reason = %v, want %v", result.Reason, tt.reason)
-					}
-				}
+			if tt.shouldBlock && tt.reason != "" && result.Reason != tt.reason {
+				t.Errorf("AnalyzePacket() Reason = %v, want %v", result.Reason, tt.reason)
 			}
 		})
 	}
@@ -174,43 +166,41 @@ func TestAnalyzer_AnalyzePacketWithSOCKS5Unwrapping(t *testing.T) {
 }
 
 func TestAnalyzer_CustomThresholds(t *testing.T) {
-	// Test with higher entropy threshold
+	// Test with custom configuration
 	config := Config{
-		Interfaces:       []string{"eth0"},
-		EntropyThreshold: 9.0, // Very high threshold
-		MinPayloadSize:   60,
-		IPSetName:        "test",
-		BanDuration:      3600,
+		Interfaces:  []string{"eth0"},
+		IPSetName:   "test",
+		BanDuration: 3600,
+		LogLevel:    "info",
 	}
 	analyzer := NewAnalyzer(config)
 
-	// High entropy data that would normally be blocked
-	highEntropyData := make([]byte, 100)
-	for i := range highEntropyData {
-		highEntropyData[i] = byte(i)
+	// Random data that doesn't match any BitTorrent patterns
+	randomData := make([]byte, 100)
+	for i := range randomData {
+		randomData[i] = byte(i)
 	}
 
-	result := analyzer.AnalyzePacket(highEntropyData, false)
+	result := analyzer.AnalyzePacket(randomData, false)
 
-	// Should not block because entropy threshold is too high
+	// Should not block because it doesn't match any BitTorrent signatures
 	if result.ShouldBlock {
-		t.Errorf("AnalyzePacket() should not block with high threshold, but did")
+		t.Errorf("AnalyzePacket() should not block random data, but did with reason: %s", result.Reason)
 	}
 }
 
-func TestAnalyzer_MinPayloadSize(t *testing.T) {
+func TestAnalyzer_SmallPayload(t *testing.T) {
 	config := DefaultConfig()
 	analyzer := NewAnalyzer(config)
 
-	// Small payload with high entropy per byte, but below MinPayloadSize
+	// Small payload with random data
 	smallPayload := []byte{0x8F, 0x3A, 0xBC, 0xD1, 0x29}
 
 	result := analyzer.AnalyzePacket(smallPayload, false)
 
-	// Should not block based on entropy because it's too small
-	// (but might block on other criteria)
-	if result.ShouldBlock && result.Reason[:4] == "High" {
-		t.Errorf("AnalyzePacket() should not apply entropy check to small payloads")
+	// Should not block because it doesn't match any BitTorrent signatures
+	if result.ShouldBlock {
+		t.Errorf("AnalyzePacket() should not block small random payloads, got reason: %s", result.Reason)
 	}
 }
 
@@ -249,7 +239,7 @@ func TestNewAnalyzer(t *testing.T) {
 		t.Fatal("NewAnalyzer() returned nil")
 	}
 
-	if analyzer.config.EntropyThreshold != config.EntropyThreshold {
+	if len(analyzer.config.Interfaces) != len(config.Interfaces) {
 		t.Errorf("NewAnalyzer() config not set correctly")
 	}
 }

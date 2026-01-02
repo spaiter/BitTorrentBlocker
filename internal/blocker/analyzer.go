@@ -1,7 +1,5 @@
 package blocker
 
-import "fmt"
-
 // AnalysisResult contains the result of packet analysis
 type AnalysisResult struct {
 	ShouldBlock bool
@@ -126,17 +124,6 @@ func (a *Analyzer) AnalyzePacketEx(payload []byte, isUDP bool, destIP string, de
 		return AnalysisResult{
 			ShouldBlock: true,
 			Reason:      "uTP Protocol (BEP 29)",
-		}
-	}
-
-	// 11. Entropy check (for fully encrypted traffic - last resort)
-	if len(processingPayload) > a.config.MinPayloadSize {
-		entropy := ShannonEntropy(processingPayload)
-		if entropy > a.config.EntropyThreshold {
-			return AnalysisResult{
-				ShouldBlock: true,
-				Reason:      fmt.Sprintf("High Entropy (%.2f)", entropy),
-			}
 		}
 	}
 
