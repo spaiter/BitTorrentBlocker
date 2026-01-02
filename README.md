@@ -262,6 +262,7 @@ config := blocker.Config{
 **Environment Variables:**
 - `INTERFACE` - Network interface to monitor (default: `eth0`)
 - `LOG_LEVEL` - Logging verbosity (default: `info`)
+- `BAN_DURATION` - Ban duration in seconds (default: `18000` = 5 hours)
 
 **Log Levels:**
 - `error` - Only critical errors
@@ -269,9 +270,13 @@ config := blocker.Config{
 - `info` - General information, detection events (default)
 - `debug` - Detailed packet analysis including whitelisted traffic
 
-**Example with custom interface:**
+**Examples:**
 ```bash
+# Custom interface and debug logging
 sudo INTERFACE=ens33 LOG_LEVEL=debug ./bin/btblocker
+
+# Short ban duration for testing (30 seconds)
+sudo BAN_DURATION=30 ./bin/btblocker
 ```
 
 ## How It Works

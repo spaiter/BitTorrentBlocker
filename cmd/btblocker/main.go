@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 
 	"github.com/example/BitTorrentBlocker/internal/blocker"
@@ -40,6 +41,11 @@ func main() {
 	}
 	if iface := os.Getenv("INTERFACE"); iface != "" {
 		config.Interface = iface
+	}
+	if banDuration := os.Getenv("BAN_DURATION"); banDuration != "" {
+		if duration, err := strconv.Atoi(banDuration); err == nil && duration > 0 {
+			config.BanDuration = duration
+		}
 	}
 
 	btBlocker, err := blocker.New(config)
