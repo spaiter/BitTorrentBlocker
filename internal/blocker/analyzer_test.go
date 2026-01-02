@@ -176,7 +176,7 @@ func TestAnalyzer_AnalyzePacketWithSOCKS5Unwrapping(t *testing.T) {
 func TestAnalyzer_CustomThresholds(t *testing.T) {
 	// Test with higher entropy threshold
 	config := Config{
-		QueueNum:         0,
+		Interface:        "eth0",
 		EntropyThreshold: 9.0, // Very high threshold
 		MinPayloadSize:   60,
 		IPSetName:        "test",

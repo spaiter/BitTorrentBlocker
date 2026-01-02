@@ -38,6 +38,9 @@ func main() {
 	if logLevel := os.Getenv("LOG_LEVEL"); logLevel != "" {
 		config.LogLevel = logLevel
 	}
+	if iface := os.Getenv("INTERFACE"); iface != "" {
+		config.Interface = iface
+	}
 
 	btBlocker, err := blocker.New(config)
 	if err != nil {
@@ -45,23 +48,26 @@ func main() {
 	}
 	defer btBlocker.Close()
 
+	log.Println("BitTorrent Blocker (Passive Monitoring) Started...")
+	log.Printf("Configuration: Interface=%s, EntropyThreshold=%.2f, MinPayload=%d",
+		config.Interface, config.EntropyThreshold, config.MinPayloadSize)
+
 	// Setup context with cancellation
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Start the blocker
-	if err := btBlocker.Start(ctx); err != nil {
-		log.Fatalf("Failed to start blocker: %v", err)
-	}
-
-	log.Println("BitTorrent Blocker (Go + nDPI + SOCKS Unwrap) Started...")
-	log.Printf("Configuration: Queue=%d, EntropyThreshold=%.2f, MinPayload=%d",
-		config.QueueNum, config.EntropyThreshold, config.MinPayloadSize)
-
-	// Wait for interrupt signal
+	// Wait for interrupt signal in a goroutine
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
-	<-sig
 
+	// Start blocker (blocking)
+	go func() {
+		if err := btBlocker.Start(ctx); err != nil && err != context.Canceled {
+			log.Fatalf("Failed to start blocker: %v", err)
+		}
+	}()
+
+	<-sig
 	log.Println("Shutting down...")
+	cancel()
 }

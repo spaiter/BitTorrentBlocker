@@ -4,33 +4,37 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/florianl/go-nfqueue"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
+	"github.com/google/gopacket/pcap"
 )
 
-// Blocker is the main BitTorrent blocker service
+// Blocker is the main BitTorrent blocker service (passive monitoring)
 type Blocker struct {
 	config     Config
 	analyzer   *Analyzer
 	banManager *IPBanManager
-	nfq        *nfqueue.Nfqueue
+	handle     *pcap.Handle
 	logger     *Logger
 }
 
-// New creates a new BitTorrent blocker instance
+// New creates a new BitTorrent blocker instance with passive monitoring (like ndpiReader)
 func New(config Config) (*Blocker, error) {
-	nfqConfig := nfqueue.Config{
-		NfQueue:      config.QueueNum,
-		MaxPacketLen: 0xFFFF,
-		MaxQueueLen:  1024,
-		Copymode:     nfqueue.NfQnlCopyPacket,
-		WriteTimeout: 15000000,
+	// Open device for passive packet capture
+	handle, err := pcap.OpenLive(
+		config.Interface,  // Network interface to monitor
+		65536,             // Snapshot length (max bytes per packet)
+		true,              // Promiscuous mode
+		pcap.BlockForever, // Read timeout
+	)
+	if err != nil {
+		return nil, fmt.Errorf("could not open interface %s: %w", config.Interface, err)
 	}
 
-	nfq, err := nfqueue.Open(&nfqConfig)
-	if err != nil {
-		return nil, fmt.Errorf("could not open nfqueue: %w", err)
+	// Set BPF filter to capture only TCP and UDP (optimization)
+	if err := handle.SetBPFFilter("tcp or udp"); err != nil {
+		handle.Close()
+		return nil, fmt.Errorf("could not set BPF filter: %w", err)
 	}
 
 	logger := NewLogger(config.LogLevel)
@@ -39,108 +43,94 @@ func New(config Config) (*Blocker, error) {
 		config:     config,
 		analyzer:   NewAnalyzer(config),
 		banManager: NewIPBanManager(config.IPSetName, config.BanDuration),
-		nfq:        nfq,
+		handle:     handle,
 		logger:     logger,
 	}, nil
 }
 
-// Start begins the packet processing loop
+// Start begins the passive packet monitoring loop (like ndpiReader)
 func (b *Blocker) Start(ctx context.Context) error {
-	fn := func(a nfqueue.Attribute) int {
-		id := *a.PacketID
-		payload := *a.Payload
-		verdict := nfqueue.NfAccept
+	b.logger.Info("BitTorrent blocker started on interface %s (passive monitoring, log level: %s)", b.config.Interface, b.config.LogLevel)
 
-		if len(payload) == 0 {
-			_ = b.nfq.SetVerdict(id, verdict)
-			return 0
-		}
+	// Create packet source from pcap handle
+	packetSource := gopacket.NewPacketSource(b.handle, b.handle.LinkType())
 
-		// Parse packet
-		packet := gopacket.NewPacket(payload, layers.LayerTypeIPv4, gopacket.DecodeOptions{Lazy: true, NoCopy: true})
-
-		var remoteIP string
-		var srcPort, dstPort uint16
-		var appLayer []byte
-		isUDP := false
-
-		// Parse IP layer (for banning)
-		if ipLayer := packet.Layer(layers.LayerTypeIPv4); ipLayer != nil {
-			ip, _ := ipLayer.(*layers.IPv4)
-			remoteIP = ip.DstIP.String()
-		} else {
-			_ = b.nfq.SetVerdict(id, verdict)
-			return 0
-		}
-
-		// Parse TCP/UDP layers
-		if tcpLayer := packet.Layer(layers.LayerTypeTCP); tcpLayer != nil {
-			tcp, _ := tcpLayer.(*layers.TCP)
-			srcPort, dstPort = uint16(tcp.SrcPort), uint16(tcp.DstPort)
-			appLayer = tcp.Payload
-		} else if udpLayer := packet.Layer(layers.LayerTypeUDP); udpLayer != nil {
-			udp, _ := udpLayer.(*layers.UDP)
-			srcPort, dstPort = uint16(udp.SrcPort), uint16(udp.DstPort)
-			appLayer = udp.Payload
-			isUDP = true
-		} else {
-			_ = b.nfq.SetVerdict(id, verdict) // Not TCP/UDP -> pass
-			return 0
-		}
-
-		// Whitelist check
-		if WhitelistPorts[srcPort] || WhitelistPorts[dstPort] {
-			b.logger.Debug("Whitelisted port: %s:%d -> %s:%d", "src", srcPort, remoteIP, dstPort)
-			_ = b.nfq.SetVerdict(id, verdict)
-			return 0
-		}
-
-		if len(appLayer) == 0 {
-			b.logger.Debug("Empty payload: %s:%d", remoteIP, dstPort)
-			_ = b.nfq.SetVerdict(id, verdict)
-			return 0
-		}
-
-		// Analyze packet with destination info for LSD detection
-		result := b.analyzer.AnalyzePacketEx(appLayer, isUDP, remoteIP, dstPort)
-
-		// Apply verdict
-		if result.ShouldBlock {
-			proto := "TCP"
-			if isUDP {
-				proto = "UDP"
+	// Process packets asynchronously
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case packet := <-packetSource.Packets():
+			if packet == nil {
+				continue
 			}
-			b.logger.Info("[BLOCK] %s %s:%d (%s) - Banning for 5h", proto, remoteIP, dstPort, result.Reason)
-			_ = b.nfq.SetVerdict(id, nfqueue.NfDrop)
-			go func() {
-				if err := b.banManager.BanIP(remoteIP); err != nil {
-					b.logger.Error("Failed to ban IP %s: %v", remoteIP, err)
-				}
-			}()
-			return 0
+
+			// Process packet in background (non-blocking, like ndpiReader)
+			go b.processPacket(packet)
 		}
+	}
+}
 
-		b.logger.Debug("[ALLOW] %s:%d (payload: %d bytes)", remoteIP, dstPort, len(appLayer))
-		_ = b.nfq.SetVerdict(id, verdict)
-		return 0
+// processPacket analyzes a single packet and bans IP if BitTorrent is detected
+func (b *Blocker) processPacket(packet gopacket.Packet) {
+	var remoteIP string
+	var srcPort, dstPort uint16
+	var appLayer []byte
+	isUDP := false
+
+	// Parse IP layer
+	if ipLayer := packet.Layer(layers.LayerTypeIPv4); ipLayer != nil {
+		ip, _ := ipLayer.(*layers.IPv4)
+		remoteIP = ip.SrcIP.String() // Source IP is the client
+	} else {
+		return
 	}
 
-	if err := b.nfq.RegisterWithErrorFunc(ctx, fn, func(e error) int {
-		b.logger.Error("Error: %v", e)
-		return -1
-	}); err != nil {
-		return fmt.Errorf("could not register callback: %w", err)
+	// Parse TCP/UDP layers
+	if tcpLayer := packet.Layer(layers.LayerTypeTCP); tcpLayer != nil {
+		tcp, _ := tcpLayer.(*layers.TCP)
+		srcPort, dstPort = uint16(tcp.SrcPort), uint16(tcp.DstPort)
+		appLayer = tcp.Payload
+	} else if udpLayer := packet.Layer(layers.LayerTypeUDP); udpLayer != nil {
+		udp, _ := udpLayer.(*layers.UDP)
+		srcPort, dstPort = uint16(udp.SrcPort), uint16(udp.DstPort)
+		appLayer = udp.Payload
+		isUDP = true
+	} else {
+		return // Not TCP/UDP
 	}
 
-	b.logger.Info("BitTorrent blocker started on queue %d (log level: %s)", b.config.QueueNum, b.config.LogLevel)
+	// Whitelist check
+	if WhitelistPorts[srcPort] || WhitelistPorts[dstPort] {
+		b.logger.Debug("Whitelisted port: %s:%d -> %d", remoteIP, srcPort, dstPort)
+		return
+	}
 
-	return nil
+	if len(appLayer) == 0 {
+		return
+	}
+
+	// Analyze packet
+	result := b.analyzer.AnalyzePacketEx(appLayer, isUDP, remoteIP, dstPort)
+
+	// Ban IP if BitTorrent detected
+	if result.ShouldBlock {
+		proto := "TCP"
+		if isUDP {
+			proto = "UDP"
+		}
+		b.logger.Info("[DETECT] %s %s:%d (%s) - Banning for 5h", proto, remoteIP, srcPort, result.Reason)
+
+		if err := b.banManager.BanIP(remoteIP); err != nil {
+			b.logger.Error("Failed to ban IP %s: %v", remoteIP, err)
+		}
+	}
 }
 
 // Close cleans up resources
 func (b *Blocker) Close() error {
-	if b.nfq != nil {
-		return b.nfq.Close()
+	if b.handle != nil {
+		b.handle.Close()
 	}
 	return nil
 }

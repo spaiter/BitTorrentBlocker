@@ -12,7 +12,7 @@ func TestDefaultConfig(t *testing.T) {
 		got      interface{}
 		expected interface{}
 	}{
-		{"QueueNum", config.QueueNum, uint16(0)},
+		{"Interface", config.Interface, "eth0"},
 		{"EntropyThreshold", config.EntropyThreshold, 7.6},
 		{"MinPayloadSize", config.MinPayloadSize, 60},
 		{"IPSetName", config.IPSetName, "torrent_block"},
@@ -42,7 +42,7 @@ func TestConfigValidation(t *testing.T) {
 		{
 			name: "Custom valid config",
 			config: Config{
-				QueueNum:         1,
+				Interface:        "eth0",
 				EntropyThreshold: 8.0,
 				MinPayloadSize:   100,
 				IPSetName:        "custom_set",
@@ -53,7 +53,7 @@ func TestConfigValidation(t *testing.T) {
 		{
 			name: "Zero entropy threshold",
 			config: Config{
-				QueueNum:         0,
+				Interface:        "eth0",
 				EntropyThreshold: 0,
 				MinPayloadSize:   60,
 				IPSetName:        "test",
@@ -64,7 +64,7 @@ func TestConfigValidation(t *testing.T) {
 		{
 			name: "Empty IPSetName",
 			config: Config{
-				QueueNum:         0,
+				Interface:        "eth0",
 				EntropyThreshold: 7.6,
 				MinPayloadSize:   60,
 				IPSetName:        "",
@@ -89,15 +89,15 @@ func TestConfigValidation(t *testing.T) {
 func TestConfigCustomValues(t *testing.T) {
 	// Test that custom config values are properly stored and used
 	config := Config{
-		QueueNum:         10,
+		Interface:        "eth0",
 		EntropyThreshold: 6.5,
 		MinPayloadSize:   128,
 		IPSetName:        "custom_blocker",
 		BanDuration:      86400, // 24 hours
 	}
 
-	if config.QueueNum != 10 {
-		t.Errorf("QueueNum = %v, want 10", config.QueueNum)
+	if config.Interface != "eth0" {
+		t.Errorf("Interface = %v, want \"eth0\"", config.Interface)
 	}
 
 	if config.EntropyThreshold != 6.5 {
@@ -119,7 +119,7 @@ func TestConfigCustomValues(t *testing.T) {
 
 func TestConfigInAnalyzer(t *testing.T) {
 	config := Config{
-		QueueNum:         0,
+		Interface:        "eth0",
 		EntropyThreshold: 9.0, // Very high threshold
 		MinPayloadSize:   200, // Large minimum size
 		IPSetName:        "test",

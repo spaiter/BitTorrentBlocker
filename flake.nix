@@ -33,10 +33,9 @@
             # Vendor directory is committed, so no hash needed
             vendorHash = null;
 
-            # Specify Go version
+            # Build inputs for libpcap
             buildInputs = with pkgs; [
-              libnetfilter_queue
-              libnfnetlink
+              libpcap
             ];
 
             nativeBuildInputs = with pkgs; [
@@ -76,11 +75,10 @@
             gopls
             gotools
             go-tools
-            libnetfilter_queue
-            libnfnetlink
+            libpcap
             pkg-config
             ipset
-            iptables
+            nftables
             golangci-lint
           ];
 

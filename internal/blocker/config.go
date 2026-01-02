@@ -2,7 +2,7 @@ package blocker
 
 // Config holds the configuration for the BitTorrent blocker
 type Config struct {
-	QueueNum         uint16
+	Interface        string // Network interface to monitor (e.g., "eth0", "ens33")
 	EntropyThreshold float64
 	MinPayloadSize   int
 	IPSetName        string
@@ -13,8 +13,8 @@ type Config struct {
 // DefaultConfig returns a configuration with recommended defaults
 func DefaultConfig() Config {
 	return Config{
-		QueueNum:         0,
-		EntropyThreshold: 7.6, // Threshold for RC4/Encryption detection
+		Interface:        "eth0", // Default interface
+		EntropyThreshold: 7.6,    // Threshold for RC4/Encryption detection
 		MinPayloadSize:   60,
 		IPSetName:        "torrent_block",
 		BanDuration:      18000, // 5 hours in seconds

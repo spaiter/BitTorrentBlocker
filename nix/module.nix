@@ -24,10 +24,10 @@ in {
       description = "The btblocker package to use";
     };
 
-    queueNum = mkOption {
-      type = types.int;
-      default = 0;
-      description = "Netfilter queue number to use";
+    interface = mkOption {
+      type = types.str;
+      default = "eth0";
+      description = "Network interface to monitor";
     };
 
     entropyThreshold = mkOption {
@@ -54,11 +54,6 @@ in {
       description = "Ban duration in seconds (default: 5 hours)";
     };
 
-    interfaces = mkOption {
-      type = types.listOf types.str;
-      default = [ "eth0" ];
-      description = "Network interfaces to monitor";
-    };
 
     whitelistPorts = mkOption {
       type = types.listOf types.int;
@@ -74,8 +69,8 @@ in {
   };
 
   config = mkIf cfg.enable {
-    # Load required kernel modules
-    boot.kernelModules = [ "nfnetlink_queue" "xt_NFQUEUE" "ip_set" "ip_set_hash_ip" ];
+    # Load required kernel modules for ipset
+    boot.kernelModules = [ "ip_set" "ip_set_hash_ip" ];
 
     # Ensure nftables and ipset are available
     environment.systemPackages = with pkgs; [
@@ -102,7 +97,10 @@ in {
         RestartSec = "5s";
 
         # Environment variables
-        Environment = [ "LOG_LEVEL=${cfg.logLevel}" ];
+        Environment = [
+          "LOG_LEVEL=${cfg.logLevel}"
+          "INTERFACE=${cfg.interface}"
+        ];
 
         # Security hardening
         NoNewPrivileges = false; # Required for CAP_NET_ADMIN
@@ -120,20 +118,12 @@ in {
         # Create ipset for banned IPs (ignore if exists)
         ${pkgs.ipset}/bin/ipset create ${cfg.ipsetName} hash:ip timeout ${toString cfg.banDuration} 2>/dev/null || true
 
-        # Configure nftables rules
+        # Configure nftables rules to drop packets from banned IPs
         ${pkgs.nftables}/bin/nft add table inet btblocker 2>/dev/null || true
-
-        # Drop packets from banned IPs
         ${pkgs.nftables}/bin/nft add chain inet btblocker input { type filter hook input priority 0 \; policy accept \; } 2>/dev/null || true
         ${pkgs.nftables}/bin/nft add chain inet btblocker forward { type filter hook forward priority 0 \; policy accept \; } 2>/dev/null || true
         ${pkgs.nftables}/bin/nft add rule inet btblocker input ip saddr @${cfg.ipsetName} drop 2>/dev/null || true
         ${pkgs.nftables}/bin/nft add rule inet btblocker forward ip saddr @${cfg.ipsetName} drop 2>/dev/null || true
-
-        # Send traffic to nfqueue for analysis
-        ${pkgs.nftables}/bin/nft add chain inet btblocker prerouting { type filter hook prerouting priority -150 \; policy accept \; } 2>/dev/null || true
-        ${lib.concatMapStringsSep "\n" (iface: ''
-          ${pkgs.nftables}/bin/nft add rule inet btblocker prerouting iifname "${iface}" queue num ${toString cfg.queueNum} 2>/dev/null || true
-        '') cfg.interfaces}
       '';
 
       postStop = ''
@@ -148,7 +138,7 @@ in {
     # Create configuration file
     environment.etc."btblocker/config.json" = {
       text = builtins.toJSON {
-        queueNum = cfg.queueNum;
+        interface = cfg.interface;
         entropyThreshold = cfg.entropyThreshold;
         minPayloadSize = cfg.minPayloadSize;
         ipsetName = cfg.ipsetName;
