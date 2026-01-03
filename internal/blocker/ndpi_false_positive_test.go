@@ -30,8 +30,6 @@ func TestNDPIFalsePositives(t *testing.T) {
 		"quic046":                        "QUIC v0.46 protocol has uTP-like patterns (9 FPs)",
 		"rx":                             "AFS RX protocol has DHT-like patterns (20 FPs)",
 		"targusdataspeed_false_positive": "Targus DataSpeed appears to have legitimate DHT traffic (4 FPs)",
-		"toca-boca":                      "Toca Boca gaming protocol has uTP-like patterns (2 FPs)",
-		"ubntac2":                        "Ubiquiti camera discovery protocol has uTP-like patterns (2 FPs)",
 	}
 
 	// Helper function to check if a file should be excluded

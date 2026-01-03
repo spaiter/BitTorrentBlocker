@@ -279,17 +279,21 @@ func CheckUTPRobust(packet []byte) bool {
 		}
 	}
 
-	// CRITICAL: Reject VoIP/messaging protocols (Telegram, WhatsApp, Alexa, Zoom)
+	// CRITICAL: Reject VoIP/messaging/discovery protocols with unusual timestamp_diff
 	// These protocols can have uTP-like headers but have distinctive patterns in timestamp_diff field:
 	// uTP header: 0-1: ver/type/ext, 2-3: conn_id, 4-7: timestamp, 8-11: timestamp_diff
 	// - Telegram: timestamp_diff often 0x00008000, 0x80000000 (symmetric padding)
 	// - WhatsApp: timestamp_diff often 0x00050000, 0x00090000 (small counters with zero padding)
 	// - Alexa: timestamp_diff often 0x00000000 (all zeros)
 	// - Zoom: timestamp_diff often 0x00000000 (all zeros, even in smaller packets)
-	// Real uTP timestamp_diff values are random/changing microsecond deltas
+	// - Ubiquiti: timestamp_diff often > 1 billion (unrealistically large)
+	// Real uTP timestamp_diff values are microsecond deltas, typically < 60 seconds
 	// Check DATA packets (type=0 or 1) - Skip ST_SYN (type=4) which initializes connections
 	if typ == 0 || typ == 1 {
 		timestampDiff := packet[8:12]
+		timestampDiffValue := binary.BigEndian.Uint32(timestampDiff)
+
+		// Check for zero-heavy patterns (VoIP)
 		zeroCount := 0
 		for _, b := range timestampDiff {
 			if b == 0 {
@@ -304,9 +308,25 @@ func CheckUTPRobust(packet []byte) bool {
 		if len(packet) >= 100 && zeroCount == 4 {
 			return false // VoIP with all-zero timestamp_diff (Zoom, Alexa)
 		}
+
+		// CRITICAL: Reject packets with unrealistically large timestamp_diff
+		// Real uTP timestamp_diff is microseconds since last packet (typically < 60 seconds)
+		// Discovery protocols (Ubiquiti, etc.) often have values > 1 billion microseconds
+		// 1 billion microseconds = 1000 seconds = 16.7 minutes (way too large for packet RTT)
+		if timestampDiffValue > 1000000000 {
+			return false // Unrealistically large timestamp_diff, not uTP
+		}
 	}
 
 	extension := packet[1]
+
+	// CRITICAL: Validate initial extension field (must be 0-4 according to BEP 29)
+	// Gaming protocols (Toca Boca, etc.) often have invalid extension values > 4
+	// Valid extensions: 0=None, 1=SACK, 2=Extension bits, 3-4=Reserved
+	if extension > 4 {
+		return false // Invalid extension type, not uTP
+	}
+
 	offset := 20
 	// Walk through extension linked list
 	for extension != 0 {
