@@ -778,9 +778,21 @@ func CheckHTTPBitTorrent(payload []byte) bool {
 	if bytes.Contains(payload, []byte("User-Agent: Azureus")) ||
 		bytes.Contains(payload, []byte("User-Agent: BitTorrent")) ||
 		bytes.Contains(payload, []byte("User-Agent: BTWebClient")) ||
-		bytes.Contains(payload, []byte("User-Agent: Shareaza")) ||
 		bytes.Contains(payload, []byte("User-Agent: FlashGet")) {
 		return true
+	}
+
+	// CRITICAL: Shareaza signature detection with Gnutella exclusion
+	// Shareaza is both a Gnutella and BitTorrent client
+	// Gnutella handshakes contain "GNUTELLA/" header - exclude these to prevent false positives
+	// Example Gnutella: "GNUTELLA/0.6 200 OK\r\nUser-Agent: Shareaza..."
+	// Example BitTorrent: "GET /announce?info_hash=...\r\nUser-Agent: Shareaza..."
+	if bytes.Contains(payload, []byte("User-Agent: Shareaza")) {
+		// Reject if this is a Gnutella handshake (contains "GNUTELLA/" protocol marker)
+		if bytes.Contains(payload, []byte("GNUTELLA/")) {
+			return false // This is Gnutella, not BitTorrent
+		}
+		return true // Shareaza without Gnutella marker = likely BitTorrent
 	}
 
 	return false
@@ -923,8 +935,9 @@ func CheckBitTorrentMessage(payload []byte) bool {
 		// - No obvious patterns of repeated bytes
 		//
 		// Heuristic: Check if payload looks like random encrypted data vs. bitmap
-		if len(payload) >= 20 && msgLen > 100 {
-			// For large messages (>100 bytes), check first 16 bytes of payload
+		// Lowered threshold from 100 to 40 to catch SSH encrypted packets
+		if len(payload) >= 20 && msgLen > 40 {
+			// For messages >40 bytes, check first 16 bytes of payload
 			sample := payload[5:21] // Skip msgID, sample 16 bytes
 
 			// Count unique byte values and repeated bytes

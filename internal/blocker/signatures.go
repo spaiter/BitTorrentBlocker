@@ -99,8 +99,8 @@ var BTSignatures = [][]byte{
 	[]byte("User-Agent: Azureus"),     // Azureus/Vuze client
 	[]byte("User-Agent: BitTorrent"),  // Official BitTorrent client
 	[]byte("User-Agent: BTWebClient"), // BitTorrent web client
-	[]byte("User-Agent: Shareaza"),    // Shareaza client
-	[]byte("User-Agent: FlashGet"),    // FlashGet client
+	// Removed: "User-Agent: Shareaza" - now handled by CheckHTTPBitTorrent() with Gnutella exclusion
+	[]byte("User-Agent: FlashGet"), // FlashGet client
 	// Removed: "&size=" - too generic HTTP parameter
 	// Note: User-Agent detection is also handled by CheckHTTPBitTorrent()
 }

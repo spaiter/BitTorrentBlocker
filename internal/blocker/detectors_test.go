@@ -301,6 +301,8 @@ func TestCheckUTPRobust(t *testing.T) {
 				p := make([]byte, 25)
 				p[0] = 0x21  // Version 1, Type ST_DATA (2)
 				p[1] = 0x01  // Extension type 1
+				p[2] = 0x12  // Connection ID (MSB)
+				p[3] = 0x34  // Connection ID (LSB) = 0x1234 (non-zero)
 				p[20] = 0x00 // Next extension = 0 (end)
 				p[21] = 0x03 // Length = 3
 				return p
