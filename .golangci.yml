@@ -1,4 +1,5 @@
 # golangci-lint configuration
+version: "2"
 
 run:
   timeout: 5m
@@ -16,40 +17,70 @@ linters:
     - gocyclo
     - misspell
 
-linters-settings:
-  gocyclo:
-    min-complexity: 15
+  settings:
+    gocyclo:
+      min-complexity: 15
 
-  misspell:
-    locale: US
+    misspell:
+      locale: US
 
-  gosec:
-    excludes:
-      - G204  # Subprocess launched with variable
-      - G304  # File path provided as taint input
+    gosec:
+      excludes:
+        - G204  # Subprocess launched with variable
+        - G304  # File path provided as taint input
+
+  exclusions:
+    paths:
+      - vendor
+    rules:
+      # Exclude some linters from running on tests
+      - path: _test\.go
+        linters:
+          - gocyclo
+          - gosec
+          - errcheck  # Allow ignoring errors in test code
+
+      # Allow high complexity in packet analyzer (multi-layer detection logic)
+      - path: analyzer\.go
+        text: "cyclomatic complexity.*AnalyzePacketEx"
+
+      # Allow high complexity in DHT node validation (detailed binary parsing)
+      - path: detectors\.go
+        text: "cyclomatic complexity.*CheckDHTNodes"
+
+      # Allow high complexity in detector functions (complex binary protocol validation)
+      - path: detectors\.go
+        text: "cyclomatic complexity.*(CheckUDPTrackerDeep|CheckUTPRobust|CheckBencodeDHT|CheckMSEEncryption|CheckBitTorrentMessage)"
+
+      # Allow ignoring Close() errors in defer statements (common Go pattern)
+      - text: "Error return value of.*Close.*is not checked"
+        linters:
+          - errcheck
+
+      # Allow ignoring fmt.Fprintf errors in logging (detection_logger.go)
+      - path: detection_logger\.go
+        text: "Error return value of.*fmt\\.Fprintf.*is not checked"
+        linters:
+          - errcheck
+
+      # Allow 0644 permissions for log files (readable by all users for debugging)
+      - path: detection_logger\.go
+        text: "G302"
+        linters:
+          - gosec
+
+      # Allow ignoring Close() errors in blocker cleanup
+      - path: blocker\.go
+        text: "G104"
+        linters:
+          - gosec
+
+      # Allow tagged switch in protocol detection (clearer than if/else chain)
+      - path: detectors\.go
+        text: "QF1003.*tagged switch"
+        linters:
+          - staticcheck
 
 issues:
-  exclude-dirs:
-    - vendor
-  exclude-rules:
-    # Exclude some linters from running on tests
-    - path: _test\.go
-      linters:
-        - gocyclo
-        - gosec
-        - errcheck  # Allow ignoring errors in test code
-
-    # Allow high complexity in packet analyzer (multi-layer detection logic)
-    - path: analyzer\.go
-      text: "cyclomatic complexity.*AnalyzePacketEx"
-
-    # Allow high complexity in DHT node validation (detailed binary parsing)
-    - path: detectors\.go
-      text: "cyclomatic complexity.*CheckDHTNodes"
-
-    # Allow high complexity in detector functions (complex binary protocol validation)
-    - path: detectors\.go
-      text: "cyclomatic complexity.*(CheckUDPTrackerDeep|CheckUTPRobust|CheckBencodeDHT|CheckMSEEncryption)"
-
   max-issues-per-linter: 0
   max-same-issues: 0

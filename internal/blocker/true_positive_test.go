@@ -109,6 +109,27 @@ func TestTruePositiveDetection(t *testing.T) {
 			minDetectionRate: 60.0, // MSE encrypts after handshake, but DHT remains detectable
 			maxPackets:       500,
 		},
+		{
+			name:             "Two Torrents (Encrypted)",
+			pcapFile:         "two_torrents.pcap",
+			description:      "Simultaneous download of two torrents (11.3KB each) - heavily encrypted",
+			minDetectionRate: 0.5, // Mostly encrypted traffic, only DHT detectable
+			maxPackets:       1000,
+		},
+		{
+			name:             "BT 6K Transfer (Encrypted)",
+			pcapFile:         "bt_6k.pcap",
+			description:      "6.93KB torrent file transfer - heavily encrypted",
+			minDetectionRate: 0.5, // Mostly encrypted traffic
+			maxPackets:       1000,
+		},
+		{
+			name:             "BT Mid-Transfer",
+			pcapFile:         "bt_middle.pcap",
+			description:      "Capture taken in the middle of active torrent transfer",
+			minDetectionRate: 95.0, // High detection rate on active transfer
+			maxPackets:       1000,
+		},
 	}
 
 	analyzer := NewAnalyzer(DefaultConfig())
