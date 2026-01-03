@@ -102,8 +102,8 @@ func (a *Analyzer) AnalyzePacketEx(payload []byte, isUDP bool, destIP string, de
 		}
 	}
 
-	// 8. SOCKS proxy connections - blocks proxy tunneling
-	if CheckSOCKSConnection(processingPayload) {
+	// 8. SOCKS proxy connections - optional, disabled by default to reduce false positives
+	if a.config.BlockSOCKS && CheckSOCKSConnection(processingPayload) {
 		return AnalysisResult{
 			ShouldBlock: true,
 			Reason:      "SOCKS Proxy Connection",

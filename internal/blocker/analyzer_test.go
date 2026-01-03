@@ -72,8 +72,8 @@ func TestAnalyzer_AnalyzePacket(t *testing.T) {
 				0x05, 0x02, 0x00, 0x02,
 			},
 			isUDP:       false,
-			shouldBlock: true,
-			reason:      "SOCKS Proxy Connection",
+			shouldBlock: false, // SOCKS blocking is now opt-in via BlockSOCKS config
+			reason:      "",
 		},
 		{
 			name:        "Normal HTTP traffic",

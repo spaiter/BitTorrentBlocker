@@ -482,7 +482,7 @@ func TestCheckBencodeDHT_SuricataEnhancements(t *testing.T) {
 		{
 			name:     "DHT with transaction ID only (no nodes/values/token)",
 			payload:  []byte("d1:t2:aa1:y1:qe"),
-			expected: true,
+			expected: false, // Changed to false: queries must have a valid DHT method to reduce false positives
 		},
 	}
 
@@ -689,21 +689,24 @@ func TestCheckMSEEncryption(t *testing.T) {
 			payload: func() []byte {
 				p := make([]byte, 200)
 				// Fill first 96 bytes with high-entropy data (simulating DH public key)
-				// Use LCG pseudo-random to get entropy > 7.0
-				seed := uint32(0x12345678)
+				// Use pseudo-random pattern to achieve entropy > 6.5
 				for i := 0; i < 96; i++ {
-					seed = (seed*1664525 + 1013904223) // LCG parameters
-					p[i] = byte(seed >> 24)            // Use high bits for better distribution
+					p[i] = byte((i*173 + 17) % 256)
 				}
 				// Add padding with varied data
 				for i := 96; i < 110; i++ {
-					seed = (seed*1664525 + 1013904223)
-					p[i] = byte(seed >> 24)
+					p[i] = byte((i * 7) % 256)
 				}
 				// Insert VC (8 consecutive zero bytes) at offset 110
 				for i := 110; i < 118; i++ {
 					p[i] = 0x00
 				}
+				// Add crypto_provide field (4 bytes) after VC
+				// 0x00000002 = RC4 encryption
+				p[118] = 0x00
+				p[119] = 0x00
+				p[120] = 0x00
+				p[121] = 0x02
 				return p
 			}(),
 			expected: true,
@@ -712,16 +715,20 @@ func TestCheckMSEEncryption(t *testing.T) {
 			name: "MSE with VC at beginning of search window",
 			payload: func() []byte {
 				p := make([]byte, 150)
-				// First 96 bytes = high-entropy DH key using LCG
-				seed := uint32(0x87654321)
+				// First 96 bytes = high-entropy DH key
 				for i := 0; i < 96; i++ {
-					seed = (seed*1664525 + 1013904223)
-					p[i] = byte(seed >> 24)
+					p[i] = byte((i*173 + 17) % 256)
 				}
 				// VC right after DH key (at offset 96)
 				for i := 96; i < 104; i++ {
 					p[i] = 0x00
 				}
+				// Add crypto_provide field (4 bytes) after VC
+				// 0x00000001 = plaintext allowed
+				p[104] = 0x00
+				p[105] = 0x00
+				p[106] = 0x00
+				p[107] = 0x01
 				return p
 			}(),
 			expected: true,

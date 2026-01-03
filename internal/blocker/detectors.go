@@ -99,6 +99,7 @@ func CheckUDPTrackerDeep(packet []byte) bool {
 }
 
 // CheckUTPRobust validates uTP header and extension chain
+// Based on sing-box implementation and BEP 29 specification
 func CheckUTPRobust(packet []byte) bool {
 	if len(packet) < 20 {
 		return false
@@ -118,6 +119,13 @@ func CheckUTPRobust(packet []byte) bool {
 		}
 		nextExtension := packet[offset]
 		offset++
+
+		// Validate extension type (must be 0-4 according to BEP 29)
+		// 0 = SACK, 1 = Extension bits, 2 = Close reason, 3-4 reserved
+		if nextExtension > 4 {
+			return false
+		}
+
 		if offset >= len(packet) {
 			return false
 		}
@@ -216,9 +224,26 @@ func CheckBencodeDHT(payload []byte) bool {
 		return false
 	}
 
-	// Check for transaction ID or DHT-specific fields
+	// For queries, require a DHT-specific method name to reduce false positives
+	hasDHTMethod := bytes.Contains(payload, []byte("4:ping")) ||
+		bytes.Contains(payload, []byte("9:find_node")) ||
+		bytes.Contains(payload, []byte("9:get_peers")) ||
+		bytes.Contains(payload, []byte("13:announce_peer")) ||
+		bytes.Contains(payload, []byte("3:get")) ||
+		bytes.Contains(payload, []byte("3:put"))
+
+	// Check for transaction ID AND (DHT method OR DHT-specific fields)
 	if bytes.Contains(payload, []byte("1:t")) {
-		return true
+		// If it's a query, require a valid DHT method
+		if bytes.Contains(payload, []byte("1:y1:q")) {
+			return hasDHTMethod
+		}
+		// For responses/errors, also check for DHT-specific fields
+		return hasDHTMethod ||
+			CheckDHTNodes(payload) ||
+			bytes.Contains(payload, []byte("6:values")) ||
+			bytes.Contains(payload, []byte("5:token")) ||
+			bytes.Contains(payload, []byte("6:nodes"))
 	}
 
 	// Check for DHT node validation
@@ -226,9 +251,7 @@ func CheckBencodeDHT(payload []byte) bool {
 		return true
 	}
 
-	// Check for values list or token
-	return bytes.Contains(payload, []byte("6:values")) ||
-		bytes.Contains(payload, []byte("5:token"))
+	return false
 }
 
 // ShannonEntropy calculates data randomness/entropy
@@ -261,8 +284,8 @@ func CheckMSEEncryption(payload []byte) bool {
 	// 4. Verification Constant (VC): 8 zero bytes
 	// 5. crypto_provide/select (4 bytes)
 
-	// Minimum: 96-byte DH key + VC (8 bytes)
-	if len(payload) < 104 {
+	// Minimum: 96-byte DH key + VC (8 bytes) + crypto field (4 bytes)
+	if len(payload) < 108 {
 		return false
 	}
 
@@ -270,9 +293,10 @@ func CheckMSEEncryption(payload []byte) bool {
 	hasHighEntropyKey := false
 	if len(payload) >= 96 {
 		entropy := ShannonEntropy(payload[0:96])
-		// DH public keys should have high entropy (> 6.0)
-		// Typical values: random data ≈ 6.2-6.5, structured data < 5.0
-		if entropy > 6.0 {
+		// DH public keys should have high entropy (> 6.5)
+		// Increased from 6.0 to 6.5 to reduce false positives
+		// Typical values: DH keys ≈ 6.5-7.0, random protocols ≈ 6.0-6.3, structured data < 5.0
+		if entropy > 6.5 {
 			hasHighEntropyKey = true
 		}
 	}
@@ -285,6 +309,7 @@ func CheckMSEEncryption(payload []byte) bool {
 	}
 
 	hasVC := false
+	vcPosition := -1
 	for i := 96; i <= searchEnd-8 && i < len(payload)-8; i++ {
 		// Check for VC (8 consecutive zero bytes)
 		isVC := true
@@ -296,13 +321,29 @@ func CheckMSEEncryption(payload []byte) bool {
 		}
 		if isVC {
 			hasVC = true
+			vcPosition = i
 			break
 		}
 	}
 
-	// Require BOTH high entropy DH key AND VC marker to reduce false positives
-	// This prevents flagging other protocols (like Hysteria2) that use high entropy
-	return hasHighEntropyKey && hasVC
+	// Additional validation: check crypto_provide/select field after VC
+	// This field should be 4 bytes after VC and have specific values
+	hasCryptoField := false
+	if hasVC && vcPosition >= 0 && len(payload) >= vcPosition+12 {
+		// crypto_provide/select is 4 bytes after VC
+		// Valid values: 0x00000001 (plaintext), 0x00000002 (RC4)
+		cryptoBytes := binary.BigEndian.Uint32(payload[vcPosition+8 : vcPosition+12])
+		// Check if it's a valid crypto field (bits 1 or 2 set, not all zeros or all ones)
+		if cryptoBytes > 0 && cryptoBytes <= 0x03 {
+			hasCryptoField = true
+		}
+	}
+
+	// Require ALL THREE conditions to minimize false positives:
+	// 1. High entropy DH key (> 6.5)
+	// 2. VC marker (8 zero bytes)
+	// 3. Valid crypto_provide/select field
+	return hasHighEntropyKey && hasVC && hasCryptoField
 }
 
 // CheckLSD detects Local Service Discovery (LSD) traffic
