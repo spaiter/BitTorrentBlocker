@@ -220,16 +220,16 @@ func CheckUTPRobust(packet []byte) bool {
 		}
 	}
 
-	// CRITICAL: Reject VoIP/messaging protocols (Telegram, WhatsApp, Alexa)
+	// CRITICAL: Reject VoIP/messaging protocols (Telegram, WhatsApp, Alexa, Zoom)
 	// These protocols can have uTP-like headers but have distinctive patterns in timestamp_diff field:
 	// uTP header: 0-1: ver/type/ext, 2-3: conn_id, 4-7: timestamp, 8-11: timestamp_diff
 	// - Telegram: timestamp_diff often 0x00008000, 0x80000000 (symmetric padding)
 	// - WhatsApp: timestamp_diff often 0x00050000, 0x00090000 (small counters with zero padding)
 	// - Alexa: timestamp_diff often 0x00000000 (all zeros)
+	// - Zoom: timestamp_diff often 0x00000000 (all zeros, even in smaller packets)
 	// Real uTP timestamp_diff values are random/changing microsecond deltas
-	// Only check large DATA packets (type=0 or 1, >= 200 bytes) - small packets can have zero timestamp_diff legitimately
-	// Skip ST_SYN (type=4) which initializes connections
-	if (typ == 0 || typ == 1) && len(packet) >= 200 {
+	// Check DATA packets (type=0 or 1) - Skip ST_SYN (type=4) which initializes connections
+	if typ == 0 || typ == 1 {
 		timestampDiff := packet[8:12]
 		zeroCount := 0
 		for _, b := range timestampDiff {
@@ -237,9 +237,13 @@ func CheckUTPRobust(packet []byte) bool {
 				zeroCount++
 			}
 		}
-		// If 3 or 4 bytes are zero in timestamp_diff, this is likely VoIP/messaging, not uTP
-		if zeroCount >= 3 {
+		// For large packets (>=200 bytes): 3+ zeros indicates VoIP
+		// For smaller packets (>=100 bytes): all 4 zeros indicates VoIP (more strict to avoid false negatives)
+		if len(packet) >= 200 && zeroCount >= 3 {
 			return false // VoIP/messaging protocol, not uTP
+		}
+		if len(packet) >= 100 && zeroCount == 4 {
+			return false // VoIP with all-zero timestamp_diff (Zoom, Alexa)
 		}
 	}
 
