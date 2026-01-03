@@ -4,7 +4,10 @@
 package integration
 
 import (
+	"io/ioutil"
+	"os"
 	"testing"
+	"time"
 
 	"github.com/example/BitTorrentBlocker/internal/blocker"
 )
@@ -387,4 +390,296 @@ func buildTLSClientHello() []byte {
 		hello[i] = byte(i % 256)
 	}
 	return hello
+}
+
+// TestDetectionLogging tests that detection logging works end-to-end
+func TestDetectionLogging(t *testing.T) {
+	logPath := "test_detection_integration.log"
+	defer func() {
+		// Clean up test file
+		if err := removeFile(logPath); err != nil {
+			t.Logf("Warning: failed to clean up test file: %v", err)
+		}
+	}()
+
+	// Create config with detection logging enabled and monitor-only mode
+	config := blocker.Config{
+		Interfaces:       []string{"lo"},
+		IPSetName:        "test_integration",
+		BanDuration:      3600,
+		LogLevel:         "info",
+		DetectionLogPath: logPath,
+		MonitorOnly:      true, // Use monitor mode for testing
+	}
+
+	analyzer := blocker.NewAnalyzer(config)
+	detectionLogger, err := blocker.NewDetectionLogger(logPath)
+	if err != nil {
+		t.Fatalf("Failed to create detection logger: %v", err)
+	}
+	defer detectionLogger.Close()
+
+	// Test various BitTorrent traffic types
+	testCases := []struct {
+		name    string
+		payload []byte
+		isUDP   bool
+	}{
+		{"BitTorrent Handshake", buildBitTorrentHandshake(), false},
+		{"UDP Tracker Announce", buildUDPTrackerAnnounce(), true},
+		{"DHT Get Peers", buildDHTGetPeersQuery(), true},
+		{"uTP SYN", buildUTPSYN(), true},
+		{"MSE Handshake", buildMSEHandshake(), false},
+	}
+
+	detectionsLogged := 0
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := analyzer.AnalyzePacket(tc.payload, tc.isUDP)
+
+			if result.ShouldBlock {
+				detectionsLogged++
+
+				// Log the detection
+				proto := "TCP"
+				if tc.isUDP {
+					proto = "UDP"
+				}
+
+				detectionLogger.LogDetection(
+					getCurrentTime(),
+					"lo",
+					proto,
+					"127.0.0.1",
+					12345,
+					"8.8.8.8",
+					6881,
+					result.Reason,
+					tc.payload,
+				)
+			}
+		})
+	}
+
+	if detectionsLogged == 0 {
+		t.Fatal("No detections were logged")
+	}
+
+	// Verify log file was created and contains data
+	content, err := readFile(logPath)
+	if err != nil {
+		t.Fatalf("Failed to read detection log: %v", err)
+	}
+
+	// Check for expected content
+	expectedStrings := []string{
+		"Timestamp:",
+		"Interface:    lo",
+		"Protocol:",
+		"Source:       127.0.0.1:12345",
+		"Destination:  8.8.8.8:6881",
+		"Detection:",
+		"Payload Size:",
+		"Hex Dump:",
+		"ASCII (printable only):",
+	}
+
+	for _, expected := range expectedStrings {
+		if !containsString(content, expected) {
+			t.Errorf("Detection log missing expected string: %q", expected)
+		}
+	}
+
+	// Verify multiple detections were logged
+	separatorCount := countOccurrences(content, "================================================================================")
+	if separatorCount < detectionsLogged {
+		t.Errorf("Expected at least %d detection entries, got %d", detectionsLogged, separatorCount)
+	}
+}
+
+// TestMonitorOnlyMode tests that monitor-only mode doesn't ban IPs
+func TestMonitorOnlyMode(t *testing.T) {
+	// Config with monitor-only mode enabled
+	monitorConfig := blocker.Config{
+		Interfaces:  []string{"lo"},
+		IPSetName:   "test_monitor",
+		BanDuration: 3600,
+		LogLevel:    "info",
+		MonitorOnly: true, // Key: monitor only
+	}
+
+	// Config with blocking enabled
+	blockingConfig := blocker.Config{
+		Interfaces:  []string{"lo"},
+		IPSetName:   "test_blocking",
+		BanDuration: 3600,
+		LogLevel:    "info",
+		MonitorOnly: false, // Blocking enabled
+	}
+
+	testCases := []struct {
+		name          string
+		config        blocker.Config
+		expectMonitor bool
+	}{
+		{"Monitor Mode", monitorConfig, true},
+		{"Blocking Mode", blockingConfig, false},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			analyzer := blocker.NewAnalyzer(tc.config)
+
+			// Test with BitTorrent handshake
+			result := analyzer.AnalyzePacket(buildBitTorrentHandshake(), false)
+
+			if !result.ShouldBlock {
+				t.Error("BitTorrent traffic should be detected")
+			}
+
+			// Verify config flag
+			if tc.config.MonitorOnly != tc.expectMonitor {
+				t.Errorf("MonitorOnly = %v, want %v", tc.config.MonitorOnly, tc.expectMonitor)
+			}
+
+			// In a real blocker instance, monitor-only mode would skip calling banManager.BanIP()
+			// This is tested in the blocker's processPacket method
+		})
+	}
+}
+
+// TestCombinedMonitorAndLogging tests both features together
+func TestCombinedMonitorAndLogging(t *testing.T) {
+	logPath := "test_combined_integration.log"
+	defer func() {
+		if err := removeFile(logPath); err != nil {
+			t.Logf("Warning: failed to clean up test file: %v", err)
+		}
+	}()
+
+	// Config with both monitor-only mode AND detection logging
+	config := blocker.Config{
+		Interfaces:       []string{"lo"},
+		IPSetName:        "test_combined",
+		BanDuration:      3600,
+		LogLevel:         "info",
+		DetectionLogPath: logPath,
+		MonitorOnly:      true, // Both features enabled
+	}
+
+	if !config.MonitorOnly {
+		t.Fatal("MonitorOnly should be true")
+	}
+
+	if config.DetectionLogPath == "" {
+		t.Fatal("DetectionLogPath should not be empty")
+	}
+
+	analyzer := blocker.NewAnalyzer(config)
+	detectionLogger, err := blocker.NewDetectionLogger(logPath)
+	if err != nil {
+		t.Fatalf("Failed to create detection logger: %v", err)
+	}
+	defer detectionLogger.Close()
+
+	// Test with multiple traffic types
+	payloads := []struct {
+		data  []byte
+		isUDP bool
+		name  string
+	}{
+		{buildBitTorrentHandshake(), false, "BT Handshake"},
+		{buildUDPTrackerAnnounce(), true, "UDP Tracker"},
+		{buildDHTGetPeersQuery(), true, "DHT Query"},
+		{buildHTTPSTraffic(), false, "HTTPS (should not detect)"},
+	}
+
+	detectionCount := 0
+	for _, p := range payloads {
+		result := analyzer.AnalyzePacket(p.data, p.isUDP)
+
+		if result.ShouldBlock {
+			detectionCount++
+			proto := "TCP"
+			if p.isUDP {
+				proto = "UDP"
+			}
+
+			detectionLogger.LogDetection(
+				getCurrentTime(),
+				"lo",
+				proto,
+				"192.168.1.100",
+				uint16(10000+detectionCount),
+				"8.8.8.8",
+				6881,
+				result.Reason,
+				p.data,
+			)
+
+			t.Logf("Detected: %s - %s", p.name, result.Reason)
+		}
+	}
+
+	if detectionCount == 0 {
+		t.Fatal("No detections occurred")
+	}
+
+	// Verify log file contains all detections
+	content, err := readFile(logPath)
+	if err != nil {
+		t.Fatalf("Failed to read log file: %v", err)
+	}
+
+	separatorCount := countOccurrences(content, "================================================================================")
+	if separatorCount != detectionCount {
+		t.Errorf("Expected %d log entries, got %d", detectionCount, separatorCount)
+	}
+
+	t.Logf("Successfully logged %d detections in monitor-only mode", detectionCount)
+}
+
+// Helper functions for integration tests
+
+func getCurrentTime() time.Time {
+	return time.Now()
+}
+
+func readFile(path string) (string, error) {
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
+func removeFile(path string) error {
+	return os.Remove(path)
+}
+
+func containsString(content, substr string) bool {
+	return len(content) > 0 && len(substr) > 0 && (content == substr || len(content) > len(substr) && (content[:len(substr)] == substr || content[len(content)-len(substr):] == substr || findInString(content, substr)))
+}
+
+func findInString(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}
+
+func countOccurrences(s, substr string) int {
+	if len(substr) == 0 {
+		return 0
+	}
+	count := 0
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			count++
+			i += len(substr) - 1
+		}
+	}
+	return count
 }

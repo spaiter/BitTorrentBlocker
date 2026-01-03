@@ -327,6 +327,8 @@ config := blocker.Config{
   - Multiple interfaces: `INTERFACE=eth0,wg0,awg0` (comma-separated)
 - `LOG_LEVEL` - Logging verbosity (default: `info`)
 - `BAN_DURATION` - Ban duration in seconds (default: `18000` = 5 hours)
+- `DETECTION_LOG` - Path to detection log file for false positive analysis (default: disabled)
+- `MONITOR_ONLY` - If set to `true` or `1`, only log detections without banning IPs (default: `false`)
 
 **Log Levels:**
 - `error` - Only critical errors
@@ -347,6 +349,82 @@ sudo BAN_DURATION=30 ./bin/btblocker
 
 # Multiple interfaces with custom ban duration
 sudo INTERFACE=eth0,ens33 BAN_DURATION=3600 ./bin/btblocker
+
+# Enable detection logging for false positive analysis
+sudo DETECTION_LOG=/var/log/btblocker_detections.log ./bin/btblocker
+
+# Monitor-only mode: detect but don't ban (useful for analysis)
+sudo MONITOR_ONLY=true DETECTION_LOG=/var/log/btblocker_detections.log ./bin/btblocker
+```
+
+### Monitor-Only Mode (Analysis Without Blocking)
+
+Monitor-only mode allows you to run the blocker without actually banning any IPs. This is **perfect for analyzing false positives** without disrupting traffic:
+
+```bash
+# Enable monitor-only mode with detection logging
+sudo MONITOR_ONLY=true DETECTION_LOG=/var/log/btblocker_detections.log ./bin/btblocker
+```
+
+In this mode:
+- ✅ All detections are logged normally
+- ✅ Detection log is written with full packet details
+- ✅ Console shows "[DETECT] ... - Monitor only (no ban)"
+- ❌ No IPs are added to ipset
+- ❌ No traffic is blocked
+
+This is ideal for:
+- Testing detection rules on production traffic without impact
+- Collecting false positive data for analysis
+- Understanding what traffic patterns trigger detections
+- Validating changes before enabling blocking
+
+### Detection Logging (False Positive Analysis)
+
+The blocker can log detailed packet information for every detection to help analyze false positives and improve detection algorithms:
+
+```bash
+# Enable detection logging with blocking
+sudo DETECTION_LOG=/var/log/btblocker_detections.log ./bin/btblocker
+
+# Enable detection logging in monitor-only mode (recommended for analysis)
+sudo MONITOR_ONLY=true DETECTION_LOG=/var/log/btblocker_detections.log ./bin/btblocker
+```
+
+Each detection creates a detailed log entry containing:
+- Timestamp and interface
+- Protocol (TCP/UDP)
+- Source and destination IP:port
+- Detection reason (which rule triggered)
+- Full packet payload (first 512 bytes)
+- Hex dump of payload
+- ASCII representation
+
+**Example detection log entry:**
+```
+================================================================================
+Timestamp:    2024-01-15 18:46:57.123
+Interface:    ens33
+Protocol:     UDP
+Source:       192.168.1.100:51234
+Destination:  8.8.8.8:6881
+Detection:    UDP Tracker Protocol
+Payload Size: 98 bytes
+
+Hex Dump:
+00000000  00 00 04 17 27 10 19 80  00 00 00 00 00 00 00 01  |....'...........|
+00000010  12 34 56 78 9a bc de f0  2d 71 42 31 34 32 30 2d  |.4Vx....-qB1420-|
+...
+
+ASCII (printable only):
+....'........4Vx....-qB1420-...
+```
+
+This logging is useful for:
+- Identifying false positive patterns
+- Understanding which detection rules are triggering
+- Improving detection accuracy
+- Debugging edge cases
 ```
 
 ## How It Works

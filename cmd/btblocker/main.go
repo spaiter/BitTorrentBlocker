@@ -67,6 +67,12 @@ func main() {
 			config.BanDuration = duration
 		}
 	}
+	if detectionLog := os.Getenv("DETECTION_LOG"); detectionLog != "" {
+		config.DetectionLogPath = detectionLog
+	}
+	if monitorOnly := os.Getenv("MONITOR_ONLY"); monitorOnly == "true" || monitorOnly == "1" {
+		config.MonitorOnly = true
+	}
 
 	btBlocker, err := blocker.New(config)
 	if err != nil {

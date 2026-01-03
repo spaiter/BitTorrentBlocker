@@ -16,6 +16,8 @@ func TestDefaultConfig(t *testing.T) {
 		{"IPSetName", config.IPSetName, "torrent_block"},
 		{"BanDuration", config.BanDuration, 18000},
 		{"LogLevel", config.LogLevel, "info"},
+		{"DetectionLogPath", config.DetectionLogPath, ""},
+		{"MonitorOnly", config.MonitorOnly, false},
 	}
 
 	for _, tt := range tests {
@@ -85,10 +87,12 @@ func TestConfigValidation(t *testing.T) {
 func TestConfigCustomValues(t *testing.T) {
 	// Test that custom config values are properly stored and used
 	config := Config{
-		Interfaces:  []string{"eth0", "wg0"},
-		IPSetName:   "custom_blocker",
-		BanDuration: 86400, // 24 hours
-		LogLevel:    "debug",
+		Interfaces:       []string{"eth0", "wg0"},
+		IPSetName:        "custom_blocker",
+		BanDuration:      86400, // 24 hours
+		LogLevel:         "debug",
+		DetectionLogPath: "/var/log/detections.log",
+		MonitorOnly:      true,
 	}
 
 	if len(config.Interfaces) != 2 || config.Interfaces[0] != "eth0" || config.Interfaces[1] != "wg0" {
@@ -105,6 +109,14 @@ func TestConfigCustomValues(t *testing.T) {
 
 	if config.LogLevel != "debug" {
 		t.Errorf("LogLevel = %v, want debug", config.LogLevel)
+	}
+
+	if config.DetectionLogPath != "/var/log/detections.log" {
+		t.Errorf("DetectionLogPath = %v, want /var/log/detections.log", config.DetectionLogPath)
+	}
+
+	if config.MonitorOnly != true {
+		t.Errorf("MonitorOnly = %v, want true", config.MonitorOnly)
 	}
 }
 

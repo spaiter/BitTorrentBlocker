@@ -13,11 +13,12 @@ import (
 
 // Blocker is the main BitTorrent blocker service (passive monitoring)
 type Blocker struct {
-	config     Config
-	analyzer   *Analyzer
-	banManager *IPBanManager
-	handles    []*pcap.Handle
-	logger     *Logger
+	config          Config
+	analyzer        *Analyzer
+	banManager      *IPBanManager
+	handles         []*pcap.Handle
+	logger          *Logger
+	detectionLogger *DetectionLogger
 }
 
 // New creates a new BitTorrent blocker instance with passive monitoring (like ndpiReader)
@@ -28,6 +29,15 @@ func New(config Config) (*Blocker, error) {
 
 	logger := NewLogger(config.LogLevel)
 	handles := make([]*pcap.Handle, 0, len(config.Interfaces))
+
+	// Initialize detection logger if enabled
+	detectionLogger, err := NewDetectionLogger(config.DetectionLogPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create detection logger: %w", err)
+	}
+	if config.DetectionLogPath != "" {
+		logger.Info("Detection logging enabled: %s", config.DetectionLogPath)
+	}
 
 	// Open pcap handles for all interfaces
 	for _, iface := range config.Interfaces {
@@ -59,17 +69,22 @@ func New(config Config) (*Blocker, error) {
 	}
 
 	return &Blocker{
-		config:     config,
-		analyzer:   NewAnalyzer(config),
-		banManager: NewIPBanManager(config.IPSetName, config.BanDuration),
-		handles:    handles,
-		logger:     logger,
+		config:          config,
+		analyzer:        NewAnalyzer(config),
+		banManager:      NewIPBanManager(config.IPSetName, config.BanDuration),
+		handles:         handles,
+		logger:          logger,
+		detectionLogger: detectionLogger,
 	}, nil
 }
 
 // Start begins the passive packet monitoring loop (like ndpiReader)
 func (b *Blocker) Start(ctx context.Context) error {
-	b.logger.Info("BitTorrent blocker started on %d interface(s) (passive monitoring, log level: %s)", len(b.config.Interfaces), b.config.LogLevel)
+	mode := "blocking enabled"
+	if b.config.MonitorOnly {
+		mode = "MONITOR ONLY - no blocking"
+	}
+	b.logger.Info("BitTorrent blocker started on %d interface(s) (passive monitoring, log level: %s, mode: %s)", len(b.config.Interfaces), b.config.LogLevel, mode)
 
 	// Use WaitGroup to wait for all interface monitors to finish
 	var wg sync.WaitGroup
@@ -140,7 +155,7 @@ func formatDuration(seconds int) string {
 
 // processPacket analyzes a single packet and bans IP if BitTorrent is detected
 func (b *Blocker) processPacket(packet gopacket.Packet, iface string) {
-	var remoteIP string
+	var srcIP, dstIP string
 	var srcPort, dstPort uint16
 	var appLayer []byte
 	isUDP := false
@@ -148,7 +163,8 @@ func (b *Blocker) processPacket(packet gopacket.Packet, iface string) {
 	// Parse IP layer
 	if ipLayer := packet.Layer(layers.LayerTypeIPv4); ipLayer != nil {
 		ip, _ := ipLayer.(*layers.IPv4)
-		remoteIP = ip.SrcIP.String() // Source IP is the client
+		srcIP = ip.SrcIP.String()
+		dstIP = ip.DstIP.String()
 	} else {
 		return
 	}
@@ -169,7 +185,7 @@ func (b *Blocker) processPacket(packet gopacket.Packet, iface string) {
 
 	// Whitelist check
 	if WhitelistPorts[srcPort] || WhitelistPorts[dstPort] {
-		b.logger.Debug("[%s] Whitelisted port: %s:%d -> %d", iface, remoteIP, srcPort, dstPort)
+		b.logger.Debug("[%s] Whitelisted port: %s:%d -> %d", iface, srcIP, srcPort, dstPort)
 		return
 	}
 
@@ -178,7 +194,7 @@ func (b *Blocker) processPacket(packet gopacket.Packet, iface string) {
 	}
 
 	// Analyze packet
-	result := b.analyzer.AnalyzePacketEx(appLayer, isUDP, remoteIP, dstPort)
+	result := b.analyzer.AnalyzePacketEx(appLayer, isUDP, dstIP, dstPort)
 
 	// Ban IP if BitTorrent detected
 	if result.ShouldBlock {
@@ -186,11 +202,33 @@ func (b *Blocker) processPacket(packet gopacket.Packet, iface string) {
 		if isUDP {
 			proto = "UDP"
 		}
-		duration := formatDuration(b.config.BanDuration)
-		b.logger.Info("[%s] [DETECT] %s %s:%d (%s) - Banning for %s", iface, proto, remoteIP, srcPort, result.Reason, duration)
 
-		if err := b.banManager.BanIP(remoteIP); err != nil {
-			b.logger.Error("[%s] Failed to ban IP %s: %v", iface, remoteIP, err)
+		// Log detection
+		if b.config.MonitorOnly {
+			b.logger.Info("[%s] [DETECT] %s %s:%d (%s) - Monitor only (no ban)", iface, proto, srcIP, srcPort, result.Reason)
+		} else {
+			duration := formatDuration(b.config.BanDuration)
+			b.logger.Info("[%s] [DETECT] %s %s:%d (%s) - Banning for %s", iface, proto, srcIP, srcPort, result.Reason, duration)
+		}
+
+		// Log detailed packet information for false positive analysis
+		b.detectionLogger.LogDetection(
+			time.Now(),
+			iface,
+			proto,
+			srcIP,
+			srcPort,
+			dstIP,
+			dstPort,
+			result.Reason,
+			appLayer,
+		)
+
+		// Ban IP only if not in monitor-only mode
+		if !b.config.MonitorOnly {
+			if err := b.banManager.BanIP(srcIP); err != nil {
+				b.logger.Error("[%s] Failed to ban IP %s: %v", iface, srcIP, err)
+			}
 		}
 	}
 }
@@ -201,6 +239,9 @@ func (b *Blocker) Close() error {
 		if handle != nil {
 			handle.Close()
 		}
+	}
+	if b.detectionLogger != nil {
+		b.detectionLogger.Close()
 	}
 	return nil
 }

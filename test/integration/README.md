@@ -36,6 +36,9 @@ Integration tests verify:
 3. **Performance**: Throughput and latency under load
 4. **IP Banning**: Integration with ipset
 5. **False Positive Rate**: Normal traffic should pass through
+6. **Detection Logging**: Detailed packet logging for false positive analysis
+7. **Monitor-Only Mode**: Detection without IP banning
+8. **Combined Features**: Detection logging + monitor mode together
 
 ## Requirements
 
