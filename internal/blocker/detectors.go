@@ -729,3 +729,274 @@ func CheckHTTPBitTorrent(payload []byte) bool {
 
 	return false
 }
+
+// CheckBitTorrentMessage detects BitTorrent TCP messages by structure
+// BitTorrent message format: [length:4 bytes (big-endian)][message ID:1 byte][payload]
+// This detects data transfer messages after the handshake
+func CheckBitTorrentMessage(payload []byte) bool {
+	// Need at least 5 bytes for a valid message
+	if len(payload) < 5 {
+		return false
+	}
+
+	// CRITICAL: Reject SSH protocol messages
+	// SSH also uses length-prefixed messages: [length:4][type:1][payload]
+	// SSH types: 1-49 for transport layer, 50-79 for authentication, 80-127 for connection
+	// BitTorrent types: 0-9, 13-17, 20 (0x14), 21-23 (0x15-0x17)
+	msgID := payload[4]
+
+	// SSH user auth (50-79) and connection (80-127) - no overlap with BitTorrent
+	if msgID >= 50 {
+		return false // SSH range, not BitTorrent
+	}
+
+	// SSH transport layer (21-49): KEX, NEWKEYS, etc.
+	// BitTorrent v2 hash messages are 21-23 (0x15-0x17)
+	// To avoid false positives, only accept 21-23 in this range
+	if msgID >= 21 && msgID <= 49 {
+		if msgID > 23 {
+			return false // SSH, not BitTorrent
+		}
+		// 21-23 could be BT v2, continue validation
+	}
+
+	// Parse message length (first 4 bytes, big-endian)
+	msgLen := binary.BigEndian.Uint32(payload[0:4])
+
+	// Message length validation
+	// - Must be at least 1 (for message ID)
+	// - Should not be unrealistically large (> 128KB for most messages, except piece messages)
+	// - Piece messages can be up to 16KB + 9 bytes overhead = ~16400 bytes
+	// - Extension messages can be larger, but let's cap at 256KB to avoid false positives
+	if msgLen == 0 || msgLen > 262144 { // 256KB max
+		return false
+	}
+
+	// Check if the full message fits in the payload
+	// (may not fit due to TCP segmentation, but if it's too far off, it's suspicious)
+	expectedLen := int(msgLen) + 4     // +4 for length prefix
+	if expectedLen > len(payload)*10 { // If expected is >10x actual, likely not BitTorrent
+		return false
+	}
+
+	// Valid BitTorrent message IDs (from BEP 3, BEP 5, BEP 10)
+	// 0x00-0x09: Core protocol (choke, unchoke, interested, have, bitfield, request, piece, cancel, port)
+	// 0x0D-0x11: Fast extension (BEP 6)
+	// 0x14: Extended protocol (BEP 10)
+	// 0x15: Hash request (BEP 52)
+	// 0x16: Hashes (BEP 52)
+	// 0x17: Hash reject (BEP 52)
+
+	switch msgID {
+	case 0x00, 0x01, 0x02, 0x03: // Choke, Unchoke, Interested, Not Interested
+		// These should have length = 1 (just the ID, no payload)
+		return msgLen == 1
+
+	case 0x04: // Have
+		// Length should be 5 (1 byte ID + 4 bytes piece index)
+		return msgLen == 5
+
+	case 0x05: // Bitfield (BitTorrent) vs other protocols (SSH, MSDO)
+		// BitTorrent: Length = 1 + (number of pieces / 8), typically reasonable size
+		// Most torrents have < 10000 pieces, so bitfield < 1250 bytes
+		// Large torrents might have up to 100000 pieces = ~12500 bytes
+		if msgLen <= 1 || msgLen > 65536 {
+			return false
+		}
+
+		// CRITICAL: Message type 0x05 collides with multiple protocols:
+		// - SSH_MSG_SERVICE_REQUEST (type 5)
+		// - Microsoft Download Optimizer (MSDO) control messages
+		// - Other proprietary protocols
+		//
+		// For VERY SHORT bitfield messages (< 20 bytes), be more conservative
+		// Real BitTorrent bitfields this short would represent <160 pieces (very small torrent)
+		// Such small torrents are rare, and short 0x05 messages are more likely protocol control
+		if msgLen < 20 {
+			// For short "bitfield" messages, check if this looks like a realistic small torrent
+			// A 9-byte bitfield (8 bytes data) = 64 pieces = ~1GB file (assuming 16MB pieces)
+			// However, most BitTorrent clients use adaptive piece sizes, and small files
+			// (<1GB) typically use smaller pieces, so we'd see more bytes in the bitfield
+			//
+			// Additionally, check for suspicious patterns that indicate protocol messages:
+			// MSDO example: 00 00 0f ff ff e0 00 03 - has pattern of aligned nibbles/fields
+			// BitTorrent: More random distribution of set bits
+			//
+			// Simple heuristic: if length is suspiciously round (8, 9, 10, 12, 16 bytes)
+			// AND we see field-like patterns (e.g., 0xFF or 0x00 in specific positions),
+			// it's more likely a protocol message than a bitfield
+			if msgLen >= 8 && msgLen <= 12 {
+				// Check if payload has protocol-like structure (repeated patterns)
+				if len(payload) >= 9 {
+					data := payload[5:] // Bitfield data
+					// Check for field alignment indicators: runs of 0xFF or 0x00
+					// that suggest structured fields rather than random bitmap
+					ffCount := 0
+					zeroCount := 0
+					for _, b := range data {
+						if b == 0xFF {
+							ffCount++
+						} else if b == 0x00 {
+							zeroCount++
+						}
+					}
+					// If >60% of bytes are 0xFF or 0x00, suspicious for this size
+					totalFieldBytes := ffCount + zeroCount
+					if totalFieldBytes >= len(data)*6/10 {
+						return false // Likely protocol message, not BitTorrent
+					}
+				}
+			}
+		}
+
+		// For larger messages, use statistical analysis to distinguish encrypted SSH
+		// CRITICAL: Distinguish from SSH encrypted packets (type 5 collision)
+		// At this stage of SSH connection, packets are encrypted, so we can't inspect structure
+		// However, we can use statistical properties:
+		//
+		// BitTorrent bitfield characteristics:
+		// - BITMAP: each byte represents 8 pieces (bits)
+		// - Often has patterns: 0x00 (no pieces), 0xFF (all pieces), or sparse patterns
+		// - For partial downloads: many 0x00 bytes, some mixed bytes
+		// - For seeds: all 0xFF bytes
+		// - Typically NOT uniformly distributed random-looking data
+		//
+		// SSH encrypted characteristics:
+		// - Encrypted with AES/ChaCha20: looks like uniformly random data
+		// - High entropy throughout
+		// - No obvious patterns of repeated bytes
+		//
+		// Heuristic: Check if payload looks like random encrypted data vs. bitmap
+		if len(payload) >= 20 && msgLen > 100 {
+			// For large messages (>100 bytes), check first 16 bytes of payload
+			sample := payload[5:21] // Skip msgID, sample 16 bytes
+
+			// Count unique byte values and repeated bytes
+			uniqueBytes := make(map[byte]bool)
+			repeatedCount := 0
+			prevByte := sample[0]
+
+			for _, b := range sample {
+				uniqueBytes[b] = true
+				if b == prevByte {
+					repeatedCount++
+				}
+				prevByte = b
+			}
+
+			// BitTorrent bitfield: typically has many repeated bytes (0x00 or 0xFF runs)
+			// SSH encrypted: typically has high unique byte count, few repeats
+			// If we see >12 unique bytes out of 16 AND few repeats, likely encrypted SSH
+			if len(uniqueBytes) >= 13 && repeatedCount <= 4 {
+				return false // Likely encrypted SSH, not BitTorrent bitmap
+			}
+		}
+
+		return true
+
+	case 0x06: // Request
+		// Length should be 13 (1 + 4 + 4 + 4: ID + index + begin + length)
+		return msgLen == 13
+
+	case 0x07: // Piece (BitTorrent) vs SSH key exchange (type 7)
+		// BitTorrent Piece: Length = 9 + block_length (typically 16384 bytes)
+		// Structure: [msgID:1][index:4][begin:4][block data]
+		// Check reasonable range: 9 < length <= 16393
+		if msgLen <= 9 || msgLen > 16393 {
+			return false
+		}
+
+		// CRITICAL: SSH also uses type 7 for key exchange messages (SSH_MSG_KEXDH_INIT)
+		// SSH key exchange contains algorithm names as ASCII strings
+		// BitTorrent piece messages contain binary file data
+		//
+		// Heuristic: Check if payload contains readable ASCII text (suggests SSH)
+		// BitTorrent piece data is typically binary (media files, executables, etc.)
+		// SSH key exchange has comma-separated algorithm lists like:
+		// "diffie-hellman-group-exchange-sha1,diffie-hellman-group14-sha1,..."
+		if len(payload) >= 50 {
+			// Sample 40 bytes after the header (skip msgID + index + begin = 9 bytes)
+			sampleStart := 13 // Skip length(4) + msgID(1) + index(4) + begin(4)
+			if sampleStart+40 <= len(payload) {
+				sample := payload[sampleStart : sampleStart+40]
+
+				// Count ASCII printable characters (0x20-0x7E, excluding DEL)
+				printableCount := 0
+				commaCount := 0
+				for _, b := range sample {
+					if b >= 0x20 && b <= 0x7E {
+						printableCount++
+						if b == ',' || b == '-' {
+							commaCount++
+						}
+					}
+				}
+
+				// If >75% of sample is printable ASCII with commas/hyphens, likely SSH
+				// BitTorrent piece data would have much lower printable ratio
+				if printableCount >= 30 && commaCount >= 3 {
+					return false // Likely SSH key exchange, not BitTorrent
+				}
+			}
+		}
+
+		return true
+
+	case 0x08: // Cancel
+		// Length should be 13 (same as Request)
+		return msgLen == 13
+
+	case 0x09: // Port (DHT)
+		// Length should be 3 (1 byte ID + 2 bytes port)
+		return msgLen == 3
+
+	case 0x0D: // Suggest Piece (BEP 6)
+		// Length should be 5 (1 + 4)
+		return msgLen == 5
+
+	case 0x0E, 0x0F: // Have All, Have None (BEP 6)
+		// Length should be 1
+		return msgLen == 1
+
+	case 0x10: // Reject Request (BEP 6)
+		// Length should be 13
+		return msgLen == 13
+
+	case 0x11: // Allowed Fast (BEP 6)
+		// Length should be 5
+		return msgLen == 5
+
+	case 0x14: // Extended (BEP 10)
+		// Length > 1 (has extended message ID), check for bencode or known patterns
+		if msgLen <= 1 {
+			return false
+		}
+
+		// Extended handshake (ID=0) or extension message (ID>0)
+		// Extended messages often contain bencode dictionaries
+		if len(payload) >= 6 {
+			extID := payload[5]
+
+			// Extended handshake (extID=0) must have bencode dictionary
+			if extID == 0 {
+				// Check for bencode dictionary start 'd'
+				if len(payload) > 6 && payload[6] == 'd' {
+					return true
+				}
+			} else {
+				// Extension message - just validate it's reasonable
+				return msgLen > 2 && msgLen < 131072 // < 128KB
+			}
+		}
+		return msgLen > 1 && msgLen < 131072
+
+	case 0x15, 0x16, 0x17: // Hash request, Hashes, Hash reject (BEP 52)
+		// These are part of the v2 hash tree protocol
+		// Lengths vary, but should be reasonable
+		return msgLen > 1 && msgLen < 131072
+
+	default:
+		// Unknown message ID - not a standard BitTorrent message
+		return false
+	}
+}

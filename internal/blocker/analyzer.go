@@ -102,7 +102,16 @@ func (a *Analyzer) AnalyzePacketEx(payload []byte, isUDP bool, destIP string, de
 		}
 	}
 
-	// 8. SOCKS proxy connections - optional, disabled by default to reduce false positives
+	// 8. BitTorrent TCP message structure detection - detects data transfer messages
+	// This catches Port (DHT), Extended, and other messages after handshake
+	if !isUDP && CheckBitTorrentMessage(processingPayload) {
+		return AnalysisResult{
+			ShouldBlock: true,
+			Reason:      "BitTorrent Message Structure",
+		}
+	}
+
+	// 9. SOCKS proxy connections - optional, disabled by default to reduce false positives
 	if a.config.BlockSOCKS && CheckSOCKSConnection(processingPayload) {
 		return AnalysisResult{
 			ShouldBlock: true,
@@ -110,7 +119,7 @@ func (a *Analyzer) AnalyzePacketEx(payload []byte, isUDP bool, destIP string, de
 		}
 	}
 
-	// 9. uTP Protocol Analysis - UDP transport protocol
+	// 10. uTP Protocol Analysis - UDP transport protocol
 	if isUDP && CheckUTPRobust(processingPayload) {
 		return AnalysisResult{
 			ShouldBlock: true,

@@ -202,8 +202,8 @@ func TestNDPIFalsePositiveRate(t *testing.T) {
 		"ipsec":  true,
 		"roblox": true,
 		"nfsv2":  true, "nfsv3": true,
-		"fuzz-2021-10-13":                true,
-		"lru_ipv6_caches":                true, "quic046": true,
+		"fuzz-2021-10-13": true,
+		"lru_ipv6_caches": true, "quic046": true,
 		"rx":                             true,
 		"targusdataspeed_false_positive": true,
 	}
