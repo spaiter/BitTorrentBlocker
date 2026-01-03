@@ -1274,3 +1274,39 @@ func BenchmarkCheckBencodeDHT(b *testing.B) {
 		CheckBencodeDHT(payload)
 	}
 }
+
+func BenchmarkCheckSOCKSConnection(b *testing.B) {
+	// SOCKS5 connection request: [ver][cmd][rsv][atyp][dst.addr][dst.port]
+	payload := []byte{0x05, 0x01, 0x00, 0x01, 192, 168, 1, 1, 0x1A, 0xE1}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		CheckSOCKSConnection(payload)
+	}
+}
+
+func BenchmarkCheckUTPRobust(b *testing.B) {
+	// Valid uTP SYN packet
+	payload := make([]byte, 20)
+	payload[0] = 0x41 // Version 1, Type ST_SYN (4)
+	payload[1] = 0x00 // No extensions
+	payload[2] = 0x12 // Connection ID MSB
+	payload[3] = 0x34 // Connection ID LSB
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		CheckUTPRobust(payload)
+	}
+}
+
+func BenchmarkCheckBitTorrentMessage(b *testing.B) {
+	// BitTorrent message: [length:4][msgID:1][payload]
+	// Type 4 (Have): length=5, msgID=4, piece_index=0x12345678
+	payload := []byte{
+		0x00, 0x00, 0x00, 0x05, // Length = 5
+		0x04,                   // Message ID = Have
+		0x12, 0x34, 0x56, 0x78, // Piece index
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		CheckBitTorrentMessage(payload)
+	}
+}

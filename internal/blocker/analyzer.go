@@ -40,11 +40,12 @@ func (a *Analyzer) AnalyzePacketEx(payload []byte, isUDP bool, destIP string, de
 	}
 
 	// --- DPI ANALYZERS (Ordered by performance: fastest first) ---
-	// Performance metrics from benchmarks (lower is faster):
-	// CheckFASTExtension: 0.38 ns/op, CheckLSD: 1.14 ns/op
-	// CheckUDPTrackerDeep: 2.49 ns/op, CheckMSEEncryption: 2.59 ns/op
-	// CheckBencodeDHT: 14.34 ns/op, CheckHTTPBitTorrent: 20.60 ns/op
-	// CheckSignatures: 31.97 ns/op, ShannonEntropy: 925.4 ns/op
+	// Performance metrics from benchmarks (ns/op, lower is faster):
+	// CheckExtendedMessage: 0.19, CheckSOCKSConnection: 0.19, CheckFASTExtension: 0.38
+	// CheckLSD: 1.13, CheckBitTorrentMessage: 1.25, CheckUTPRobust: 1.89
+	// CheckBencodeDHT: 2.81, CheckUDPTrackerDeep: 3.73, CheckHTTPBitTorrent: 7.17
+	// CheckDHTNodes: 15.04, CheckSignatures: 31.87
+	// CheckMSEEncryption: 899, ShannonEntropy: 928
 
 	// 1. FAST Extension Detection (0.38 ns/op) - extremely fast, TCP only
 	if !isUDP && CheckFASTExtension(processingPayload) {
