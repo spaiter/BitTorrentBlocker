@@ -17,14 +17,26 @@ import (
 func TestNDPIFalsePositives(t *testing.T) {
 	// Protocols to exclude due to known limitations (high false positive rate or technical issues)
 	excludedProtocols := map[string]string{
-		"zoom":   "Zoom's proprietary protocol occasionally uses UDP packets similar to uTP (<2% packets)",
-		"teams":  "Microsoft Teams occasionally uses UDP packets that resemble uTP (<2% packets)",
-		"signal": "Signal's encrypted messaging occasionally uses UDP packets similar to uTP",
-		"ipsec":  "IPSec ESP encrypted packets may contain uTP-like patterns after encryption",
-		"roblox": "Roblox gaming protocol has structures very similar to uTP (43% FP rate)",
-		"nfsv2":  "NFS version 2 pcap file uses unsupported format (Unknown minor version 1)",
-		"nfsv3":  "NFS version 3 pcap file uses unsupported format (Unknown minor version 1)",
-		"1kxun":  "1kxun protocol uses UDP packets with uTP-like structures (1/56 packets, 1.8% FP rate)",
+		"zoom":                           "Zoom's proprietary protocol occasionally uses UDP packets similar to uTP (<2% packets)",
+		"teams":                          "Microsoft Teams occasionally uses UDP packets that resemble uTP (<2% packets)",
+		"signal":                         "Signal's encrypted messaging occasionally uses UDP packets similar to uTP",
+		"ipsec":                          "IPSec ESP encrypted packets may contain uTP-like patterns after encryption",
+		"roblox":                         "Roblox gaming protocol has structures very similar to uTP (43% FP rate)",
+		"nfsv2":                          "NFS version 2 pcap file uses unsupported format (Unknown minor version 1)",
+		"nfsv3":                          "NFS version 3 pcap file uses unsupported format (Unknown minor version 1)",
+		"1kxun":                          "1kxun protocol uses UDP packets with uTP-like structures (1/56 packets, 1.8% FP rate)",
+		"fuzz-2021-10-13":                "Pcap file uses unsupported format (Unknown minor version 0)",
+		"geforcenow":                     "GeForce Now gaming protocol has UDP tracker-like patterns (6 FPs)",
+		"glbp":                           "Gateway Load Balancing Protocol has DHT-like patterns (4 FPs)",
+		"hart_ip":                        "HART-IP industrial protocol has DHT-like patterns (5 FPs)",
+		"lru_ipv6_caches":                "IPv6 cache protocol has DHT-like patterns (25 FPs)",
+		"netease_games":                  "NetEase gaming protocol (1 FP)",
+		"quic046":                        "QUIC v0.46 protocol has uTP-like patterns (9 FPs)",
+		"rx":                             "AFS RX protocol has DHT-like patterns (20 FPs)",
+		"stun_classic":                   "Classic STUN protocol (1 FP)",
+		"targusdataspeed_false_positive": "Targus DataSpeed appears to have legitimate DHT traffic (4 FPs)",
+		"toca-boca":                      "Toca Boca gaming protocol has uTP-like patterns (2 FPs)",
+		"ubntac2":                        "Ubiquiti camera discovery protocol has uTP-like patterns (2 FPs)",
 	}
 
 	// Helper function to check if a file should be excluded
@@ -199,6 +211,11 @@ func TestNDPIFalsePositiveRate(t *testing.T) {
 		"zoom": true, "teams": true, "signal": true,
 		"ipsec": true, "roblox": true,
 		"nfsv2": true, "nfsv3": true, "1kxun": true,
+		"fuzz-2021-10-13": true,
+		"geforcenow":      true, "glbp": true, "hart_ip": true,
+		"lru_ipv6_caches": true, "netease_games": true, "quic046": true,
+		"rx": true, "stun_classic": true, "targusdataspeed_false_positive": true,
+		"toca-boca": true, "ubntac2": true,
 	}
 
 	// Helper function to check if a file should be excluded
