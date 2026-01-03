@@ -72,6 +72,43 @@ func TestTruePositiveDetection(t *testing.T) {
 			minDetectionRate: 80.0,
 			maxPackets:       50,
 		},
+		{
+			name:             "Tracker Communication",
+			pcapFile:         "tracker.pcap",
+			description:      "BitTorrent tracker HTTP/HTTPS communication",
+			minDetectionRate: 40.0, // HTTP-based tracker requests may contain BitTorrent identifiers
+			maxPackets:       100,
+		},
+		{
+			name:             "Zeek Tracker",
+			pcapFile:         "zeek_tracker.pcap",
+			description:      "Zeek IDS test - BitTorrent tracker announce/scrape",
+			minDetectionRate: 40.0, // HTTP tracker protocol
+			maxPackets:       100,
+		},
+		{
+			name:             "BT Search",
+			pcapFile:         "bt_search.pcap",
+			description:      "BitTorrent DHT search queries",
+			minDetectionRate: 80.0, // DHT queries should be highly detectable
+			maxPackets:       50,
+		},
+		{
+			name:             "BT DNS",
+			pcapFile:         "bt-dns.pcap",
+			description:      "DNS lookups for BitTorrent trackers/peers",
+			minDetectionRate: 0.0, // DNS queries alone don't contain BitTorrent protocol markers
+			maxPackets:       50,
+		},
+		// NOTE: VPN-tunneled, Tor, and botnet pcaps require Git LFS
+		// These files are not included in the repository due to size
+		{
+			name:             "MSE Obfuscation",
+			pcapFile:         "small_torrent_mse.pcap",
+			description:      "Message Stream Encryption (MSE/PE) - native BitTorrent obfuscation",
+			minDetectionRate: 60.0, // MSE encrypts after handshake, but DHT remains detectable
+			maxPackets:       500,
+		},
 	}
 
 	analyzer := NewAnalyzer(DefaultConfig())
