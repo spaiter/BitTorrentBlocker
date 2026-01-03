@@ -163,6 +163,23 @@ func CheckUDPTrackerDeep(packet []byte) bool {
 				return false // Invalid info_hash
 			}
 
+			// Additional validation: Check full peer ID (20 bytes at offset 36-55)
+			// Real BitTorrent peer IDs should not have excessive trailing zeros
+			// Gaming protocols and other false positives often have many trailing zeros
+			fullPeerID := packet[36:56]
+			trailingZeros := 0
+			for i := len(fullPeerID) - 1; i >= 0; i-- {
+				if fullPeerID[i] == 0 {
+					trailingZeros++
+				} else {
+					break
+				}
+			}
+			// Reject if more than 3 trailing zeros (real peer IDs are random/structured)
+			if trailingZeros > 3 {
+				return false // Too many trailing zeros, likely not BitTorrent
+			}
+
 			return true
 		}
 	}
@@ -184,11 +201,35 @@ func CheckUTPRobust(packet []byte) bool {
 	}
 
 	// CRITICAL: Reject STUN packets which start with similar bytes
-	// STUN magic cookie is 0x2112A442 at offset 4-7
+	// Modern STUN (RFC 5389): magic cookie 0x2112A442 at offset 4-7
+	// Classic STUN (RFC 3489): valid message types 0x0001, 0x0101, 0x0111, etc.
 	// This prevents false positives with STUN/WebRTC traffic
 	if len(packet) >= 8 {
+		// Check for modern STUN (RFC 5389)
 		if packet[4] == 0x21 && packet[5] == 0x12 && packet[6] == 0xA4 && packet[7] == 0x42 {
-			return false // This is a STUN packet, not uTP
+			return false // This is a modern STUN packet, not uTP
+		}
+	}
+
+	// CRITICAL: Reject classic STUN (RFC 3489) packets
+	// Classic STUN format: [2 bytes type][2 bytes length][16 bytes transaction ID]
+	// Valid message types: 0x0001 (Binding Request), 0x0101 (Binding Response),
+	// 0x0111 (Binding Error), 0x0002 (Shared Secret Request), etc.
+	// First 2 bits must be 00, and message type should be in valid range
+	if len(packet) >= 20 {
+		msgType := binary.BigEndian.Uint16(packet[0:2])
+		msgLen := binary.BigEndian.Uint16(packet[2:4])
+
+		// Check if this looks like classic STUN:
+		// 1. First 2 bits are 00 (msgType < 0x4000)
+		// 2. Valid message types: 0x0001, 0x0002, 0x0101, 0x0102, 0x0111, 0x0112
+		// 3. Message length is reasonable (< 1500 bytes)
+		if msgType < 0x4000 && msgLen < 1500 {
+			// Check for known classic STUN message types
+			if msgType == 0x0001 || msgType == 0x0101 || msgType == 0x0111 ||
+				msgType == 0x0002 || msgType == 0x0102 || msgType == 0x0112 {
+				return false // This is a classic STUN packet, not uTP
+			}
 		}
 	}
 

@@ -260,8 +260,9 @@ func TestCheckUDPTrackerDeep(t *testing.T) {
 				p[12], p[13], p[14], p[15] = 0x12, 0x34, 0x56, 0x78
 				// Info hash (20 bytes at offset 16) - must not be all zeros
 				copy(p[16:36], []byte("abcdefghij1234567890"))
-				// PeerID at offset 36 with unknown prefix
-				copy(p[36:40], []byte("UNKN"))
+				// PeerID at offset 36 with unknown prefix (full 20 bytes)
+				// Real peer IDs should have meaningful data throughout
+				copy(p[36:56], []byte("UNKN0123456789ABCDEF"))
 				return p
 			}(),
 			expected: true,
