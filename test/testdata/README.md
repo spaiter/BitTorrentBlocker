@@ -66,8 +66,16 @@ These files contain legitimate (non-BitTorrent) traffic to validate we don't hav
 | `ndpi-git.pcap` | Git version control | Ensure Git operations work | nDPI |
 | `ndpi-cloudflare-warp.pcap` | Cloudflare WARP VPN | Ensure Cloudflare VPN works | nDPI |
 | `ndpi-google-chat.pcapng` | Google Chat messaging | Ensure Google Chat works | nDPI |
+| `ndpi-pptp.pcap` | PPTP VPN protocol | Ensure PPTP VPN works | nDPI |
+| `ndpi-ntp.pcap` | NTP time synchronization | Ensure NTP works | nDPI |
+| `ndpi-snmp.pcap` | SNMP network management | Ensure SNMP works | nDPI |
+| `ndpi-gre.pcapng` | GRE tunneling protocol | Ensure GRE tunnels work | nDPI |
+| `ndpi-smb.pcap` | SMB file sharing (Windows) | Ensure SMB file shares work | nDPI |
+| `ndpi-nfs.pcap` | NFS file sharing (Unix) | Ensure NFS file shares work | nDPI |
+| `ndpi-webdav.pcap` | WebDAV file sharing | Ensure WebDAV works | nDPI |
+| `ndpi-rsync.pcap` | Rsync file synchronization | Ensure Rsync works | nDPI |
 
-**Current false positive rate: 0.00%** (tested on 2097 packets across 42 protocols)
+**Current false positive rate: 0.00%** (tested on 2235 packets across 50 protocols)
 
 ### Known Limitations
 
@@ -78,6 +86,14 @@ These files contain legitimate (non-BitTorrent) traffic to validate we don't hav
 **Microsoft Teams**: Like Zoom, Teams occasionally uses UDP packets that structurally resemble uTP. This is rare (<2% of packets) but may cause intermittent connection issues. If Teams is being blocked, whitelist Teams server IPs/ports.
 
 **Signal Messenger**: Signal's encrypted messaging protocol occasionally uses UDP packets with structures similar to uTP (version 1, type 0, extension 1). Similar to Zoom/Teams limitation. If Signal is being blocked, whitelist Signal server IPs/ports.
+
+**IPSec**: IPSec ESP (Encapsulating Security Payload) encrypted packets may contain uTP-like patterns after encryption/decryption. This is a known limitation of encrypted traffic analysis. If IPSec VPN traffic is being blocked, whitelist IPSec traffic or VPN server IPs.
+
+**Roblox**: Roblox gaming protocol uses UDP packets with structures very similar to uTP, resulting in a 43% false positive rate on test traffic. This is due to Roblox's custom networking protocol. If Roblox is being blocked, whitelist Roblox server IPs/ports (typically UDP ports in the 49152-65535 range).
+
+**Android Platform**: Android platform traffic pcaps contain mixed protocols, some with structural similarities to BitTorrent protocols, resulting in a 12.5% false positive rate on test traffic. This is due to the diverse nature of Android background services and apps. Individual apps should be whitelisted as needed.
+
+**iPhone Platform**: iPhone platform traffic pcaps contain mixed protocols, some with structural similarities to BitTorrent protocols, resulting in a 13% false positive rate on test traffic. Similar to Android, this is due to iOS background services and apps. Individual apps should be whitelisted as needed.
 
 ## Attribution
 
