@@ -79,7 +79,7 @@ linters:
 
       # Allow high complexity in detector functions (complex binary protocol validation)
       - path: detectors\.go
-        text: "cyclomatic complexity.*(CheckUDPTrackerDeep|CheckUTPRobust|CheckBencodeDHT|CheckMSEEncryption|CheckBitTorrentMessage)"
+        text: "cyclomatic complexity.*(CheckUDPTrackerDeep|CheckUTPRobust|CheckBencodeDHT|CheckMSEEncryption|CheckBitTorrentMessage|CheckSignatures)"
 
       # Allow ignoring Close() errors in defer statements (common Go pattern)
       - text: "Error return value of.*Close.*is not checked"
@@ -109,6 +109,12 @@ linters:
         text: "QF1003.*tagged switch"
         linters:
           - staticcheck
+
+      # Allow slice access in CheckUTPRobust (bounds already checked)
+      - path: detectors\.go
+        text: "G602.*slice index out of range"
+        linters:
+          - gosec
 
 issues:
   max-issues-per-linter: 0

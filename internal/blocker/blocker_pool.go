@@ -99,7 +99,7 @@ func (wp *WorkerPool) Submit(packet gopacket.Packet, iface string) bool {
 	}
 }
 
-// Stats returns worker pool statistics
+// WorkerPoolStats contains worker pool statistics
 type WorkerPoolStats struct {
 	MaxWorkers    int
 	ActiveWorkers int
