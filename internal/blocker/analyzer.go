@@ -55,7 +55,17 @@ func (a *Analyzer) AnalyzePacketEx(payload []byte, isUDP bool, destIP string, de
 		}
 	}
 
-	// 2. LSD Detection (1.14 ns/op) - very fast and specific, UDP only
+	// 2. BitTorrent TCP message structure (1.25 ns/op) - fast, HIGH HIT RATE (34%)
+	// OPTIMIZATION: Moved earlier due to high hit rate in real traffic
+	// This catches Port (DHT), Extended, and other messages after handshake
+	if !isUDP && CheckBitTorrentMessage(processingPayload) {
+		return AnalysisResult{
+			ShouldBlock: true,
+			Reason:      "BitTorrent Message Structure",
+		}
+	}
+
+	// 3. LSD Detection (1.13 ns/op) - very fast and specific, UDP only
 	if isUDP && destIP != "" && CheckLSD(processingPayload, destIP, destPort) {
 		return AnalysisResult{
 			ShouldBlock: true,
@@ -63,7 +73,7 @@ func (a *Analyzer) AnalyzePacketEx(payload []byte, isUDP bool, destIP string, de
 		}
 	}
 
-	// 3. Deep UDP Tracker analysis (2.49 ns/op) - very fast, UDP only
+	// 4. Deep UDP Tracker analysis (3.73 ns/op) - very fast, UDP only
 	if isUDP && CheckUDPTrackerDeep(processingPayload) {
 		return AnalysisResult{
 			ShouldBlock: true,
@@ -71,15 +81,7 @@ func (a *Analyzer) AnalyzePacketEx(payload []byte, isUDP bool, destIP string, de
 		}
 	}
 
-	// 4. MSE/PE Encryption Detection (2.59 ns/op) - CRITICAL for encrypted traffic
-	if CheckMSEEncryption(processingPayload) {
-		return AnalysisResult{
-			ShouldBlock: true,
-			Reason:      "MSE/PE Encryption",
-		}
-	}
-
-	// 5. Structural DHT analysis (14.34 ns/op) - fast bencode validation
+	// 5. Structural DHT analysis (2.81 ns/op) - fast bencode validation
 	if CheckBencodeDHT(processingPayload) {
 		return AnalysisResult{
 			ShouldBlock: true,
@@ -87,7 +89,7 @@ func (a *Analyzer) AnalyzePacketEx(payload []byte, isUDP bool, destIP string, de
 		}
 	}
 
-	// 6. HTTP-based BitTorrent detection (20.60 ns/op) - WebSeed, Bitcomet, User-Agent
+	// 6. HTTP-based BitTorrent detection (7.17 ns/op) - WebSeed, Bitcomet, User-Agent
 	if !isUDP && CheckHTTPBitTorrent(processingPayload) {
 		return AnalysisResult{
 			ShouldBlock: true,
@@ -95,7 +97,8 @@ func (a *Analyzer) AnalyzePacketEx(payload []byte, isUDP bool, destIP string, de
 		}
 	}
 
-	// 7. Signature analysis (31.97 ns/op) - catches common patterns
+	// 7. Signature analysis (optimized, ~20 ns/op) - catches common patterns
+	// OPTIMIZATION: Now includes fast-path for most common signatures
 	if CheckSignatures(processingPayload) {
 		return AnalysisResult{
 			ShouldBlock: true,
@@ -103,12 +106,12 @@ func (a *Analyzer) AnalyzePacketEx(payload []byte, isUDP bool, destIP string, de
 		}
 	}
 
-	// 8. BitTorrent TCP message structure detection - detects data transfer messages
-	// This catches Port (DHT), Extended, and other messages after handshake
-	if !isUDP && CheckBitTorrentMessage(processingPayload) {
+	// 8. MSE/PE Encryption Detection (899 ns/op) - CRITICAL for encrypted traffic
+	// Moved later as it's expensive and less common
+	if CheckMSEEncryption(processingPayload) {
 		return AnalysisResult{
 			ShouldBlock: true,
-			Reason:      "BitTorrent Message Structure",
+			Reason:      "MSE/PE Encryption",
 		}
 	}
 
