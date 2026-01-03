@@ -73,8 +73,21 @@ These files contain legitimate (non-BitTorrent) traffic to validate we don't hav
 | `ndpi-smb.pcap` | SMB file sharing (Windows) | Ensure SMB file shares work | nDPI |
 | `ndpi-webdav.pcap` | WebDAV file sharing | Ensure WebDAV works | nDPI |
 | `ndpi-rsync.pcap` | Rsync file synchronization | Ensure Rsync works | nDPI |
+| `ndpi-ftp.pcap` | FTP file transfer | Ensure FTP works | nDPI |
+| `ndpi-mysql.pcapng` | MySQL database traffic | Ensure MySQL works | nDPI |
+| `ndpi-oracle.pcapng` | Oracle database traffic | Ensure Oracle works | nDPI |
+| `ndpi-imap.pcap` | IMAP email protocol | Ensure IMAP works | nDPI |
+| `ndpi-pop3.pcap` | POP3 email protocol | Ensure POP3 works | nDPI |
+| `ndpi-smtp.pcap` | SMTP email protocol | Ensure SMTP works | nDPI |
+| `ndpi-irc.pcap` | IRC chat protocol | Ensure IRC works | nDPI |
+| `ndpi-jabber.pcap` | Jabber/XMPP messaging | Ensure Jabber works | nDPI |
+| `ndpi-h323.pcap` | H.323 VoIP protocol | Ensure H.323 works | nDPI |
+| `ndpi-mgcp.pcap` | MGCP media gateway control | Ensure MGCP works | nDPI |
+| `ndpi-rtsp.pcap` | RTSP streaming protocol | Ensure RTSP works | nDPI |
+| `ndpi-activision.pcap` | Activision gaming platform | Ensure Activision works | nDPI |
+| `ndpi-among-us.pcap` | Among Us game traffic | Ensure Among Us works | nDPI |
 
-**Current false positive rate: 0.00%** (tested on 2235 packets across 49 protocols)
+**Current false positive rate: 0.00%** (tested on 2657 packets across 62 protocols)
 
 ### Known Limitations
 

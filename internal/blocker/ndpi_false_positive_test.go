@@ -326,6 +326,84 @@ func TestNDPIFalsePositives(t *testing.T) {
 			description: "Rsync file synchronization should not be detected",
 			maxPackets:  100,
 		},
+		{
+			name:        "FTP",
+			pcapFile:    "../../test/testdata/pcap/ndpi-ftp.pcap",
+			description: "FTP file transfer should not be detected",
+			maxPackets:  100,
+		},
+		{
+			name:        "MySQL",
+			pcapFile:    "../../test/testdata/pcap/ndpi-mysql.pcapng",
+			description: "MySQL database traffic should not be detected",
+			maxPackets:  100,
+		},
+		{
+			name:        "Oracle",
+			pcapFile:    "../../test/testdata/pcap/ndpi-oracle.pcapng",
+			description: "Oracle database traffic should not be detected",
+			maxPackets:  100,
+		},
+		{
+			name:        "IMAP",
+			pcapFile:    "../../test/testdata/pcap/ndpi-imap.pcap",
+			description: "IMAP email protocol should not be detected",
+			maxPackets:  100,
+		},
+		{
+			name:        "POP3",
+			pcapFile:    "../../test/testdata/pcap/ndpi-pop3.pcap",
+			description: "POP3 email protocol should not be detected",
+			maxPackets:  100,
+		},
+		{
+			name:        "SMTP",
+			pcapFile:    "../../test/testdata/pcap/ndpi-smtp.pcap",
+			description: "SMTP email protocol should not be detected",
+			maxPackets:  100,
+		},
+		{
+			name:        "IRC",
+			pcapFile:    "../../test/testdata/pcap/ndpi-irc.pcap",
+			description: "IRC chat protocol should not be detected",
+			maxPackets:  100,
+		},
+		{
+			name:        "Jabber/XMPP",
+			pcapFile:    "../../test/testdata/pcap/ndpi-jabber.pcap",
+			description: "Jabber/XMPP messaging should not be detected",
+			maxPackets:  100,
+		},
+		{
+			name:        "H.323",
+			pcapFile:    "../../test/testdata/pcap/ndpi-h323.pcap",
+			description: "H.323 VoIP protocol should not be detected",
+			maxPackets:  100,
+		},
+		{
+			name:        "MGCP",
+			pcapFile:    "../../test/testdata/pcap/ndpi-mgcp.pcap",
+			description: "MGCP media gateway control should not be detected",
+			maxPackets:  100,
+		},
+		{
+			name:        "RTSP",
+			pcapFile:    "../../test/testdata/pcap/ndpi-rtsp.pcap",
+			description: "RTSP streaming protocol should not be detected",
+			maxPackets:  100,
+		},
+		{
+			name:        "Activision",
+			pcapFile:    "../../test/testdata/pcap/ndpi-activision.pcap",
+			description: "Activision gaming platform should not be detected",
+			maxPackets:  100,
+		},
+		{
+			name:        "Among Us",
+			pcapFile:    "../../test/testdata/pcap/ndpi-among-us.pcap",
+			description: "Among Us game traffic should not be detected",
+			maxPackets:  100,
+		},
 		// Roblox skipped: Roblox gaming protocol uses UDP packets with structures similar to uTP.
 		// 28/65 packets detected (43% false positive rate). Whitelist Roblox servers if needed.
 		// Android skipped: Android platform traffic includes various protocols, some with uTP-like patterns.
@@ -492,6 +570,19 @@ func TestNDPIFalsePositiveRate(t *testing.T) {
 		// NFS skipped - see comment in TestNDPIFalsePositives
 		"../../test/testdata/pcap/ndpi-webdav.pcap",
 		"../../test/testdata/pcap/ndpi-rsync.pcap",
+		"../../test/testdata/pcap/ndpi-ftp.pcap",
+		"../../test/testdata/pcap/ndpi-mysql.pcapng",
+		"../../test/testdata/pcap/ndpi-oracle.pcapng",
+		"../../test/testdata/pcap/ndpi-imap.pcap",
+		"../../test/testdata/pcap/ndpi-pop3.pcap",
+		"../../test/testdata/pcap/ndpi-smtp.pcap",
+		"../../test/testdata/pcap/ndpi-irc.pcap",
+		"../../test/testdata/pcap/ndpi-jabber.pcap",
+		"../../test/testdata/pcap/ndpi-h323.pcap",
+		"../../test/testdata/pcap/ndpi-mgcp.pcap",
+		"../../test/testdata/pcap/ndpi-rtsp.pcap",
+		"../../test/testdata/pcap/ndpi-activision.pcap",
+		"../../test/testdata/pcap/ndpi-among-us.pcap",
 		// Roblox skipped - see comment in TestNDPIFalsePositives
 		// Android skipped - see comment in TestNDPIFalsePositives
 		// iPhone skipped - see comment in TestNDPIFalsePositives
