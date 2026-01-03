@@ -310,10 +310,12 @@ func CheckUTPRobust(packet []byte) bool {
 		}
 
 		// CRITICAL: Reject packets with unrealistically large timestamp_diff
-		// Real uTP timestamp_diff is microseconds since last packet (typically < 60 seconds)
-		// Discovery protocols (Ubiquiti, etc.) often have values > 1 billion microseconds
-		// 1 billion microseconds = 1000 seconds = 16.7 minutes (way too large for packet RTT)
-		if timestampDiffValue > 1000000000 {
+		// Real uTP timestamp_diff is microseconds since last packet
+		// Discovery protocols (Ubiquiti, etc.) often have values > 2 billion microseconds
+		// 2 billion microseconds = 2000 seconds = ~33 minutes
+		// Real BitTorrent can have timestamp_diff up to ~1.5 billion in legitimate cases
+		// Set threshold at 2 billion to allow real traffic while catching bogus discovery protocols
+		if timestampDiffValue > 2000000000 {
 			return false // Unrealistically large timestamp_diff, not uTP
 		}
 	}

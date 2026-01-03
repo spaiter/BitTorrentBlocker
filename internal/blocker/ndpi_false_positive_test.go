@@ -24,8 +24,6 @@ func TestNDPIFalsePositives(t *testing.T) {
 		"nfsv3":                          "NFS version 3 pcap file uses unsupported format (Unknown minor version 1)",
 		"fuzz-2021-10-13":                "Pcap file uses unsupported format (Unknown minor version 0)",
 		"geforcenow":                     "GeForce Now gaming protocol has UDP tracker-like patterns (6 FPs)",
-		"glbp":                           "Gateway Load Balancing Protocol has DHT-like patterns (4 FPs)",
-		"hart_ip":                        "HART-IP industrial protocol has DHT-like patterns (5 FPs)",
 		"lru_ipv6_caches":                "IPv6 cache protocol has DHT-like patterns (25 FPs)",
 		"quic046":                        "QUIC v0.46 protocol has uTP-like patterns (9 FPs)",
 		"rx":                             "AFS RX protocol has DHT-like patterns (20 FPs)",
@@ -204,12 +202,12 @@ func TestNDPIFalsePositiveRate(t *testing.T) {
 		"zoom":   true,
 		"ipsec":  true,
 		"roblox": true,
-		"nfsv2":  true, "nfsv3": true, "1kxun": true,
+		"nfsv2":  true, "nfsv3": true,
 		"fuzz-2021-10-13": true,
-		"geforcenow":      true, "glbp": true, "hart_ip": true,
-		"lru_ipv6_caches": true, "netease_games": true, "quic046": true,
-		"rx": true, "stun_classic": true, "targusdataspeed_false_positive": true,
-		"toca-boca": true, "ubntac2": true,
+		"geforcenow":      true,
+		"lru_ipv6_caches": true, "quic046": true,
+		"rx":                             true,
+		"targusdataspeed_false_positive": true,
 	}
 
 	// Helper function to check if a file should be excluded
