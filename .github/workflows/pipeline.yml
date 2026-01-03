@@ -73,12 +73,62 @@ jobs:
       - name: Run integration tests
         run: go test -tags=integration ./test/integration -v
 
-  lint:
-    name: Lint
+  format:
+    name: Auto-format Code
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.head_ref }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.20'
+          cache: true
+
+      - name: Run gofmt
+        run: |
+          # Format all Go files (excluding vendor)
+          find . -name '*.go' -not -path './vendor/*' -exec gofmt -w {} \;
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          if git diff --quiet; then
+            echo "changes=false" >> $GITHUB_OUTPUT
+            echo "✅ Code is already formatted"
+          else
+            echo "changes=true" >> $GITHUB_OUTPUT
+            echo "📝 Formatting changes detected"
+            git diff --stat
+          fi
+
+      - name: Commit formatting changes
+        if: steps.check_changes.outputs.changes == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "style: auto-format code with gofmt [skip ci]"
+          git push
+
+  lint:
+    name: Lint and Auto-fix
+    runs-on: ubuntu-latest
+    needs: [format]
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.head_ref }}
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -91,11 +141,32 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libpcap-dev
 
-      - name: golangci-lint
+      - name: Run golangci-lint with auto-fix
         uses: golangci/golangci-lint-action@v4
         with:
           version: latest
-          args: --timeout=5m
+          args: --fix --timeout=5m
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          if git diff --quiet; then
+            echo "changes=false" >> $GITHUB_OUTPUT
+            echo "✅ No linting issues to fix"
+          else
+            echo "changes=true" >> $GITHUB_OUTPUT
+            echo "🔧 Auto-fixed linting issues"
+            git diff --stat
+          fi
+
+      - name: Commit linting fixes
+        if: steps.check_changes.outputs.changes == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "style: auto-fix linting issues [skip ci]"
+          git push
 
   # ============================================================================
   # STAGE 2: VERSION PREPARATION (determine version and update files)
@@ -104,7 +175,7 @@ jobs:
   prepare-version:
     name: Prepare Version
     runs-on: ubuntu-latest
-    needs: [test-unit, test-integration, lint]
+    needs: [test-unit, test-integration, format, lint]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -399,7 +470,7 @@ jobs:
   pr-summary:
     name: PR Summary
     runs-on: ubuntu-latest
-    needs: [test-unit, test-integration, lint]
+    needs: [test-unit, test-integration, format, lint]
     if: github.event_name == 'pull_request'
 
     steps:
@@ -408,4 +479,5 @@ jobs:
           echo "✅ All PR checks passed!"
           echo "Unit Tests: ${{ needs.test-unit.result }}"
           echo "Integration Tests: ${{ needs.test-integration.result }}"
+          echo "Formatting: ${{ needs.format.result }}"
           echo "Lint: ${{ needs.lint.result }}"
