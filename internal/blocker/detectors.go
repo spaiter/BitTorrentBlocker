@@ -346,6 +346,28 @@ func CheckUTPRobust(packet []byte) bool {
 		return false
 	}
 
+	// CRITICAL: Additional uTP validation checks to prevent QUIC/VoIP false positives
+	// Extract connection ID and window size for validation
+	connectionID := binary.BigEndian.Uint16(packet[2:4])
+	windowSize := binary.BigEndian.Uint32(packet[12:16])
+
+	// CRITICAL: Reject packets with connection ID = 0
+	// TeamViewer and other protocols can have all-zero connection IDs
+	// Real uTP uses random non-zero connection IDs (16-bit)
+	// Exception: ST_SYN packets (type=4) can have conn_id=0 on initial handshake
+	if connectionID == 0 && typ != 4 {
+		return false // Zero connection ID for non-SYN packet, not uTP
+	}
+
+	// CRITICAL: Reject packets with unrealistic window sizes
+	// uTP window size is in bytes, typically 1-10 MB for BitTorrent
+	// VoIP protocols (Zoom, etc.) often have values > 1 billion (garbage data)
+	// Real maximum: 100MB is generous upper bound (most use 1-10MB)
+	maxWindowSize := uint32(100 * 1024 * 1024) // 100MB
+	if windowSize > maxWindowSize {
+		return false // Unrealistically large window size, not uTP
+	}
+
 	// CRITICAL: Reject WireGuard handshake initiation packets
 	// WireGuard format: 0x01 (message type) + 0x00 0x00 0x00 (reserved) + encrypted data
 	// This looks like uTP: version=1, type=0 (DATA), extension=0
