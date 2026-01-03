@@ -114,6 +114,40 @@ func CheckUDPTrackerDeep(packet []byte) bool {
 		}
 	}
 
+	// CRITICAL: Reject AFS RX protocol packets
+	// RX protocol structure: Epoch (4) | Connection ID (4) | Call Number (4) | Sequence (4) | Serial (4) | Type (1) | Flags (1)
+	// RX packets have:
+	// - Call Number at offset 8-11 (often 1 or 2, coincidentally matching BT announce/scrape actions)
+	// - Serial number at offset 16-19 (increments by 1, looks like transaction ID)
+	// - Type byte at offset 20 (1-4 for data, 3 for ack, etc.)
+	// Key discriminators from BitTorrent UDP tracker:
+	// 1. RX has consistent packet type byte at offset 20-21
+	// 2. RX sequence/serial increment patterns are different
+	// 3. First 4 bytes (epoch) are usually recent Unix timestamps (0x6XXXXXXX range or newer 0xAXXXXXXX+)
+	if len(packet) >= 24 {
+		// Check if first 4 bytes look like a Unix epoch timestamp
+		// Unix timestamps since Jan 1, 2010 are in range 0x4B3B4CA8 - current time
+		// AFS RX epochs are typically recent timestamps (within a few years)
+		epoch := binary.BigEndian.Uint32(packet[0:4])
+		callNum := binary.BigEndian.Uint32(packet[8:12])
+		seq := binary.BigEndian.Uint32(packet[12:16])
+		serial := binary.BigEndian.Uint32(packet[16:20])
+		packetType := packet[20]
+
+		// RX protocol detection criteria:
+		// 1. Epoch looks like a recent timestamp (0x50000000 to 0xFFFFFFFF, ~2012 onwards)
+		// 2. Call number is small (1-100 typical)
+		// 3. Sequence and serial are small incremental values (0-1000 typical)
+		// 4. Packet type is in valid RX range (1-13)
+		if epoch >= 0x50000000 && // Recent Unix timestamp
+			callNum <= 100 && // Small call number
+			seq <= 1000 && // Small sequence number
+			serial <= 1000 && // Small serial number
+			packetType >= 1 && packetType <= 13 { // Valid RX packet type
+			return false // This is AFS RX protocol, not BitTorrent
+		}
+	}
+
 	// 1. Connect (Magic Number Check)
 	if len(packet) >= 16 && len(packet) < minSizeScrape {
 		if binary.BigEndian.Uint64(packet[:8]) == trackerProtocolID &&
