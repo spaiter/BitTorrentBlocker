@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -94,7 +95,7 @@ func main() {
 
 	// Start blocker (blocking)
 	go func() {
-		if err := btBlocker.Start(ctx); err != nil && err != context.Canceled {
+		if err := btBlocker.Start(ctx); err != nil && !errors.Is(err, context.Canceled) {
 			log.Fatalf("Failed to start blocker: %v", err)
 		}
 	}()

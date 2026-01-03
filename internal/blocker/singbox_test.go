@@ -26,7 +26,11 @@ func TestSingBoxBitTorrentHandshake(t *testing.T) {
 		result := analyzer.AnalyzePacket(pkt, false) // TCP handshake
 		if !result.ShouldBlock {
 			t.Errorf("Packet %d: Failed to detect BitTorrent handshake", i+1)
-			t.Logf("  Payload: %q", string(pkt[:min(50, len(pkt))]))
+			payloadLen := len(pkt)
+			if payloadLen > 50 {
+				payloadLen = 50
+			}
+			t.Logf("  Payload: %q", string(pkt[:payloadLen]))
 		} else {
 			t.Logf("Packet %d: ✅ DETECTED - %s", i+1, result.Reason)
 		}

@@ -16,6 +16,20 @@ linters:
     - gosec
     - gocyclo
     - misspell
+    # Additional useful linters (batch 1)
+    - unconvert      # Remove unnecessary type conversions
+    - unparam        # Reports unused function parameters
+    - nolintlint     # Reports ill-formed nolint directives
+    - bodyclose      # Checks HTTP response body is closed
+    - errorlint      # Find problems with error wrapping
+    - nilerr         # Find code returning nil with non-nil error check
+    # Additional useful linters (batch 2)
+    - gocritic       # Provides diagnostics for bugs, performance, and style
+    - revive         # Fast, configurable linter (golint replacement)
+    - predeclared    # Find code that shadows Go's predeclared identifiers
+    - whitespace     # Checks for unnecessary newlines
+    - wastedassign   # Finds wasted assignment statements
+    - usestdlibvars  # Detect possibility to use std lib vars/constants
 
   settings:
     gocyclo:
@@ -28,6 +42,20 @@ linters:
       excludes:
         - G204  # Subprocess launched with variable
         - G304  # File path provided as taint input
+
+    revive:
+      rules:
+        # Disable package-comments requirement (not necessary for all packages)
+        - name: package-comments
+          disabled: true
+        # Keep other useful rules enabled
+        - name: exported
+          severity: warning
+          disabled: false
+
+    gocritic:
+      disabled-checks:
+        - ifElseChain  # if-else chains are sometimes clearer than switches
 
   exclusions:
     paths:

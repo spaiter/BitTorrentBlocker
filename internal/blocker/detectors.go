@@ -24,7 +24,7 @@ func UnwrapSOCKS5(packet []byte) ([]byte, bool) {
 	}
 
 	atyp := packet[3]
-	headerLen := 0
+	var headerLen int
 	switch atyp {
 	case 1: // IPv4
 		headerLen = 10

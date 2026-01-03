@@ -2,6 +2,7 @@ package blocker
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -95,7 +96,7 @@ func (b *Blocker) Start(ctx context.Context) error {
 		wg.Add(1)
 		go func(iface string, h *pcap.Handle) {
 			defer wg.Done()
-			if err := b.monitorInterface(ctx, iface, h); err != nil && err != context.Canceled {
+			if err := b.monitorInterface(ctx, iface, h); err != nil && !errors.Is(err, context.Canceled) {
 				errChan <- err
 			}
 		}(b.config.Interfaces[i], handle)

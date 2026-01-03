@@ -220,7 +220,7 @@ func TestSuricataDHTPacketDetails(t *testing.T) {
 		// Log details
 		t.Logf("\n--- Packet %d: %s ---", packetNum, testCase.name)
 		t.Logf("Payload length: %d bytes", len(payload))
-		t.Logf("First 100 bytes: %q", string(payload[:min(100, len(payload))]))
+		t.Logf("First 100 bytes: %q", string(payload[:minInt(100, len(payload))]))
 		t.Logf("Detection result: %v", result.ShouldBlock)
 		if result.ShouldBlock {
 			t.Logf("Detection reason: %s", result.Reason)
@@ -239,7 +239,7 @@ func TestSuricataDHTPacketDetails(t *testing.T) {
 	}
 }
 
-func min(a, b int) int {
+func minInt(a, b int) int {
 	if a < b {
 		return a
 	}
