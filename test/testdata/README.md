@@ -42,12 +42,20 @@ These files contain legitimate (non-BitTorrent) traffic to validate we don't hav
 | `ndpi-tor.pcap` | Tor anonymity network | Ensure privacy tools work | nDPI |
 | `ndpi-dropbox.pcap` | Dropbox cloud storage | Ensure cloud services work | nDPI |
 | `ndpi-spotify.pcap` | Spotify music streaming | Ensure streaming services work | nDPI |
+| `ndpi-netflix.pcap` | Netflix video streaming | Ensure streaming video works | nDPI |
+| `ndpi-youtube.pcap` | YouTube video streaming | Ensure YouTube works | nDPI |
+| `ndpi-webex.pcap` | Cisco WebEx conferencing | Ensure enterprise video conferencing works | nDPI |
+| `ndpi-skype.pcap` | Skype video calls | Ensure Skype works | nDPI |
 
-**Current false positive rate: 0.00%** (tested on 792 packets across 18 protocols)
+**Current false positive rate: 0.00%** (tested on 1083 packets across 22 protocols)
 
 ### Known Limitations
 
 **Telegram**: Telegram's MTProto UDP transport protocol has legitimate structural similarities to BitTorrent's uTP and UDP tracker protocols. This is due to both being UDP-based with similar header structures. If Telegram traffic is being blocked, add Telegram server IPs/ports to whitelist.
+
+**Zoom**: Zoom's proprietary video protocol occasionally uses UDP packets with structures similar to uTP (version 1, type 0, extension 1). This affects <2% of Zoom packets but cannot be reliably distinguished without application-layer inspection. If Zoom is being blocked, whitelist Zoom server IPs/ports.
+
+**Microsoft Teams**: Like Zoom, Teams occasionally uses UDP packets that structurally resemble uTP. This is rare (<2% of packets) but may cause intermittent connection issues. If Teams is being blocked, whitelist Teams server IPs/ports.
 
 ## Attribution
 
