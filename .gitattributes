@@ -1,1 +1,28 @@
+# Auto detect text files and normalize line endings to LF in the repository
+* text=auto
+
+# Go source files should always use LF
+*.go text eol=lf
+*.mod text eol=lf
+*.sum text eol=lf
+
+# Shell scripts must use LF (required for bash)
+*.sh text eol=lf
+
+# Markdown and documentation
+*.md text eol=lf
+
+# YAML files
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# Binary files
+*.pcap binary
+*.pcapng binary
+*.exe binary
+*.dll binary
+*.so binary
+*.dylib binary
+
+# Nix-specific
 flake.lock linguist-generated=true
