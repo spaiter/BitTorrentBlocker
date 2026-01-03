@@ -50,9 +50,7 @@ func TestNewDetectionLogger(t *testing.T) {
 			}
 
 			// Clean up
-			if logger != nil {
-				logger.Close()
-			}
+			logger.Close()
 		})
 	}
 }
