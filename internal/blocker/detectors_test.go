@@ -258,7 +258,8 @@ func TestCheckUDPTrackerDeep(t *testing.T) {
 				p[8], p[9], p[10], p[11] = 0x00, 0x00, 0x00, 0x01
 				// Transaction ID (4 bytes)
 				p[12], p[13], p[14], p[15] = 0x12, 0x34, 0x56, 0x78
-				// Info hash (20 bytes at offset 16)
+				// Info hash (20 bytes at offset 16) - must not be all zeros
+				copy(p[16:36], []byte("abcdefghij1234567890"))
 				// PeerID at offset 36 with unknown prefix
 				copy(p[36:40], []byte("UNKN"))
 				return p

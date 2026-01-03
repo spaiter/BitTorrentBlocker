@@ -18,7 +18,6 @@ func TestNDPIFalsePositives(t *testing.T) {
 	// Protocols to exclude due to known limitations (high false positive rate or technical issues)
 	excludedProtocols := map[string]string{
 		"zoom":                "Zoom's proprietary protocol occasionally uses UDP packets similar to uTP (<2% packets)",
-		"telegram":            "Telegram MTProto UDP transport has structural similarities to uTP/UDP tracker",
 		"teams":               "Microsoft Teams occasionally uses UDP packets that resemble uTP (<2% packets)",
 		"signal":              "Signal's encrypted messaging occasionally uses UDP packets similar to uTP",
 		"ipsec":               "IPSec ESP encrypted packets may contain uTP-like patterns after encryption",
@@ -200,7 +199,7 @@ func TestNDPIFalsePositives(t *testing.T) {
 func TestNDPIFalsePositiveRate(t *testing.T) {
 	// Protocols to exclude (same as in TestNDPIFalsePositives)
 	excludedProtocols := map[string]bool{
-		"zoom": true, "telegram": true, "teams": true, "signal": true,
+		"zoom": true, "teams": true, "signal": true,
 		"ipsec": true, "roblox": true, "android": true, "iphone": true,
 		"nfsv2": true, "nfsv3": true, "googledns_android10": true, "1kxun": true,
 	}

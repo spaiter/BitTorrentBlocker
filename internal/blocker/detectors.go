@@ -78,7 +78,7 @@ func CheckUDPTrackerDeep(packet []byte) bool {
 		// DNS queries typically have: QR=0, QDCOUNT >= 1
 		// DNS responses typically have: QR=1
 		isQuery := (flags&0x8000) == 0 && qdcount > 0 && qdcount < 100
-		isResponse := (flags&0x8000) != 0
+		isResponse := (flags & 0x8000) != 0
 
 		if isQuery || isResponse {
 			// Additional validation: check OPCODE (bits 11-14 of flags)
@@ -202,10 +202,45 @@ func CheckUTPRobust(packet []byte) bool {
 		}
 	}
 
+	// Validate uTP version and type first (must be version=1, type 0-4)
 	version := packet[0] & 0x0F
 	typ := packet[0] >> 4
 	if version != 1 || typ > 4 {
 		return false
+	}
+
+	// CRITICAL: Reject WireGuard handshake initiation packets
+	// WireGuard format: 0x01 (message type) + 0x00 0x00 0x00 (reserved) + encrypted data
+	// This looks like uTP: version=1, type=0 (DATA), extension=0
+	// Distinguish by checking if bytes 1-3 are all zeros (reserved field in WireGuard)
+	// Real uTP DATA packets (type=0) would have extension field at byte 1, not 0x00
+	if typ == 0 && len(packet) >= 4 {
+		if packet[1] == 0x00 && packet[2] == 0x00 && packet[3] == 0x00 {
+			return false // This is WireGuard handshake, not uTP
+		}
+	}
+
+	// CRITICAL: Reject VoIP/messaging protocols (Telegram, WhatsApp, Alexa)
+	// These protocols can have uTP-like headers but have distinctive patterns in timestamp_diff field:
+	// uTP header: 0-1: ver/type/ext, 2-3: conn_id, 4-7: timestamp, 8-11: timestamp_diff
+	// - Telegram: timestamp_diff often 0x00008000, 0x80000000 (symmetric padding)
+	// - WhatsApp: timestamp_diff often 0x00050000, 0x00090000 (small counters with zero padding)
+	// - Alexa: timestamp_diff often 0x00000000 (all zeros)
+	// Real uTP timestamp_diff values are random/changing microsecond deltas
+	// Only check large DATA packets (type=0 or 1, >= 200 bytes) - small packets can have zero timestamp_diff legitimately
+	// Skip ST_SYN (type=4) which initializes connections
+	if (typ == 0 || typ == 1) && len(packet) >= 200 {
+		timestampDiff := packet[8:12]
+		zeroCount := 0
+		for _, b := range timestampDiff {
+			if b == 0 {
+				zeroCount++
+			}
+		}
+		// If 3 or 4 bytes are zero in timestamp_diff, this is likely VoIP/messaging, not uTP
+		if zeroCount >= 3 {
+			return false // VoIP/messaging protocol, not uTP
+		}
 	}
 
 	extension := packet[1]
