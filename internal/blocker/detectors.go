@@ -104,6 +104,16 @@ func CheckUTPRobust(packet []byte) bool {
 	if len(packet) < 20 {
 		return false
 	}
+
+	// CRITICAL: Reject STUN packets which start with similar bytes
+	// STUN magic cookie is 0x2112A442 at offset 4-7
+	// This prevents false positives with STUN/WebRTC traffic
+	if len(packet) >= 8 {
+		if packet[4] == 0x21 && packet[5] == 0x12 && packet[6] == 0xA4 && packet[7] == 0x42 {
+			return false // This is a STUN packet, not uTP
+		}
+	}
+
 	version := packet[0] & 0x0F
 	typ := packet[0] >> 4
 	if version != 1 || typ > 4 {
