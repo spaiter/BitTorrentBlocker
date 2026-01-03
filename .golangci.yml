@@ -60,6 +60,7 @@ linters:
   exclusions:
     paths:
       - vendor
+      - examples  # Example code (reference only, not compiled)
     rules:
       # Exclude some linters from running on tests
       - path: _test\.go
