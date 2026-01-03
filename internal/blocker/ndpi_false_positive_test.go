@@ -22,7 +22,6 @@ func TestNDPIFalsePositives(t *testing.T) {
 		"roblox":                         "Roblox gaming protocol has structures very similar to uTP (43% FP rate)",
 		"nfsv2":                          "NFS version 2 pcap file uses unsupported format (Unknown minor version 1)",
 		"nfsv3":                          "NFS version 3 pcap file uses unsupported format (Unknown minor version 1)",
-		"1kxun":                          "1kxun protocol uses UDP packets with uTP-like structures (1/56 packets, 1.8% FP rate)",
 		"fuzz-2021-10-13":                "Pcap file uses unsupported format (Unknown minor version 0)",
 		"geforcenow":                     "GeForce Now gaming protocol has UDP tracker-like patterns (6 FPs)",
 		"glbp":                           "Gateway Load Balancing Protocol has DHT-like patterns (4 FPs)",

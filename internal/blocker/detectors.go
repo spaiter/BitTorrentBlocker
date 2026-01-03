@@ -200,6 +200,24 @@ func CheckUTPRobust(packet []byte) bool {
 		return false
 	}
 
+	// CRITICAL: Reject DHCP/BOOTP packets (RFC 2131)
+	// DHCP packets start with: op(1) htype(1) hlen(1) hops(1) xid(4) ...
+	// Common pattern: 0x01 (BOOTREQUEST) or 0x02 (BOOTREPLY) at byte 0
+	// And have magic cookie 0x63825363 at offset 236
+	// DHCP is often misdetected because first byte can be 0x01 (like uTP version 1)
+	if len(packet) >= 240 {
+		op := packet[0]
+		htype := packet[1]
+		hlen := packet[2]
+		// Check if this looks like DHCP: op=1 or 2, htype=1 (Ethernet), hlen=6
+		if (op == 0x01 || op == 0x02) && htype == 0x01 && hlen == 0x06 {
+			// Verify with magic cookie at offset 236
+			if packet[236] == 0x63 && packet[237] == 0x82 && packet[238] == 0x53 && packet[239] == 0x63 {
+				return false // This is DHCP, not uTP
+			}
+		}
+	}
+
 	// CRITICAL: Reject STUN packets which start with similar bytes
 	// Modern STUN (RFC 5389): magic cookie 0x2112A442 at offset 4-7
 	// Classic STUN (RFC 3489): valid message types 0x0001, 0x0101, 0x0111, etc.
