@@ -549,13 +549,11 @@ Unit test files:
 
 See [test/integration/README.md](test/integration/README.md) for details.
 
-**End-to-End Tests:**
-- Real-world deployment simulation on NixOS
-- Actual network traffic interception with nfqueue
-- iptables/ipset integration testing
-- Complete service lifecycle verification
-
-See [test/e2e/README.md](test/e2e/README.md) for E2E testing details.
+**Integration Tests with Real Traffic:**
+- Real-world BitTorrent pcap files from nDPI project
+- Validates detection against industry-standard test suite
+- Tests multiple protocols: TCP, uTP, DHT, MSE/PE encryption
+- Cross-platform pcap reading without native library dependencies
 
 ### Build
 

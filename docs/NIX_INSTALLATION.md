@@ -359,4 +359,4 @@ nix.settings.substituters = [ "https://cache.nixos.org" "https://btblocker.cachi
 
 - [NIXOS_DEPLOYMENT.md](NIXOS_DEPLOYMENT.md) - Complete deployment guide
 - [Architecture Documentation](../README.md#architecture) - Project structure
-- [E2E Tests](../test/e2e/README.md) - Testing infrastructure
+- [Integration Tests](../test/integration/README.md) - Testing infrastructure

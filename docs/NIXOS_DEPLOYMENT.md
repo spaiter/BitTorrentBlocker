@@ -131,12 +131,8 @@ Internet
 git clone https://github.com/yourusername/BitTorrentBlocker
 cd BitTorrentBlocker
 
-# Run NixOS VM test
-nix-build test/e2e/e2e.nix
-
-# Or run manual test on your server
-cd test/e2e
-sudo ./run-e2e-test.sh
+# Run integration tests with real BitTorrent traffic
+go test -tags=integration ./test/integration -v
 ```
 
 ### 2. Manual Verification
@@ -413,4 +409,4 @@ sudo ipset destroy torrent_block
 
 - GitHub Issues: https://github.com/yourusername/BitTorrentBlocker/issues
 - Documentation: https://github.com/yourusername/BitTorrentBlocker/tree/main/docs
-- E2E Tests: https://github.com/yourusername/BitTorrentBlocker/tree/main/test/e2e
+- Integration Tests: https://github.com/yourusername/BitTorrentBlocker/tree/main/test/integration
