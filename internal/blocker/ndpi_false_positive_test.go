@@ -17,17 +17,14 @@ import (
 func TestNDPIFalsePositives(t *testing.T) {
 	// Protocols to exclude due to known limitations (high false positive rate or technical issues)
 	excludedProtocols := map[string]string{
-		"zoom":                "Zoom's proprietary protocol occasionally uses UDP packets similar to uTP (<2% packets)",
-		"teams":               "Microsoft Teams occasionally uses UDP packets that resemble uTP (<2% packets)",
-		"signal":              "Signal's encrypted messaging occasionally uses UDP packets similar to uTP",
-		"ipsec":               "IPSec ESP encrypted packets may contain uTP-like patterns after encryption",
-		"roblox":              "Roblox gaming protocol has structures very similar to uTP (43% FP rate)",
-		"android":             "Android platform traffic includes mixed protocols (12.5% FP rate)",
-		"iphone":              "iPhone platform traffic includes mixed protocols (13% FP rate)",
-		"nfsv2":               "NFS version 2 pcap file uses unsupported format (Unknown minor version 1)",
-		"nfsv3":               "NFS version 3 pcap file uses unsupported format (Unknown minor version 1)",
-		"googledns_android10": "Mixed Android traffic with high false positive rate",
-		"1kxun":               "1kxun protocol uses UDP packets with uTP-like structures (1/56 packets, 1.8% FP rate)",
+		"zoom":   "Zoom's proprietary protocol occasionally uses UDP packets similar to uTP (<2% packets)",
+		"teams":  "Microsoft Teams occasionally uses UDP packets that resemble uTP (<2% packets)",
+		"signal": "Signal's encrypted messaging occasionally uses UDP packets similar to uTP",
+		"ipsec":  "IPSec ESP encrypted packets may contain uTP-like patterns after encryption",
+		"roblox": "Roblox gaming protocol has structures very similar to uTP (43% FP rate)",
+		"nfsv2":  "NFS version 2 pcap file uses unsupported format (Unknown minor version 1)",
+		"nfsv3":  "NFS version 3 pcap file uses unsupported format (Unknown minor version 1)",
+		"1kxun":  "1kxun protocol uses UDP packets with uTP-like structures (1/56 packets, 1.8% FP rate)",
 	}
 
 	// Helper function to check if a file should be excluded
@@ -200,8 +197,8 @@ func TestNDPIFalsePositiveRate(t *testing.T) {
 	// Protocols to exclude (same as in TestNDPIFalsePositives)
 	excludedProtocols := map[string]bool{
 		"zoom": true, "teams": true, "signal": true,
-		"ipsec": true, "roblox": true, "android": true, "iphone": true,
-		"nfsv2": true, "nfsv3": true, "googledns_android10": true, "1kxun": true,
+		"ipsec": true, "roblox": true,
+		"nfsv2": true, "nfsv3": true, "1kxun": true,
 	}
 
 	// Helper function to check if a file should be excluded
