@@ -9,9 +9,9 @@ import (
 	"github.com/google/gopacket/pcapgo"
 )
 
-// TestAnalyzeTargusdataspeed analyzes the targusdataspeed "false positive"
+// TestAnalyzeTargusdataspeed analyzes the targusdataspeed DHT traffic (moved to true-positive)
 func TestAnalyzeTargusdataspeed(t *testing.T) {
-	pcapPath := "../../test/testdata/pcap/false-positive/targusdataspeed_false_positives.pcap"
+	pcapPath := "../../test/testdata/pcap/true-positive/targusdataspeed_dht.pcap"
 
 	f, err := os.Open(pcapPath)
 	if err != nil {
