@@ -119,34 +119,34 @@ func TestMSEStricterValidation(t *testing.T) {
 	analyzer := NewAnalyzer(config)
 
 	testCases := []struct {
-		name          string
-		payload       []byte
-		shouldBlock   bool
-		description   string
+		name        string
+		payload     []byte
+		shouldBlock bool
+		description string
 	}{
 		{
-			name:          "High entropy only (no VC)",
-			payload:       generateRandomBytes(200),
-			shouldBlock:   false,
-			description:   "High entropy alone should not trigger MSE detection",
+			name:        "High entropy only (no VC)",
+			payload:     generateRandomBytes(200),
+			shouldBlock: false,
+			description: "High entropy alone should not trigger MSE detection",
 		},
 		{
-			name:          "VC only (no high entropy DH key)",
-			payload:       buildVCWithoutHighEntropy(),
-			shouldBlock:   false,
-			description:   "VC marker without high entropy DH key should not trigger",
+			name:        "VC only (no high entropy DH key)",
+			payload:     buildVCWithoutHighEntropy(),
+			shouldBlock: false,
+			description: "VC marker without high entropy DH key should not trigger",
 		},
 		{
-			name:          "High entropy + VC without crypto field",
-			payload:       buildMSEWithoutCryptoField(),
-			shouldBlock:   false,
-			description:   "MSE without valid crypto_provide field should not trigger",
+			name:        "High entropy + VC without crypto field",
+			payload:     buildMSEWithoutCryptoField(),
+			shouldBlock: false,
+			description: "MSE without valid crypto_provide field should not trigger",
 		},
 		{
-			name:          "Valid MSE handshake",
-			payload:       buildCompleteMSEHandshake(),
-			shouldBlock:   true,
-			description:   "Complete MSE handshake should be detected",
+			name:        "Valid MSE handshake",
+			payload:     buildCompleteMSEHandshake(),
+			shouldBlock: true,
+			description: "Complete MSE handshake should be detected",
 		},
 	}
 
@@ -210,9 +210,9 @@ func generateRandomBytes(n int) []byte {
 func buildQUICInitial() []byte {
 	// Simplified QUIC Initial packet header
 	return []byte{
-		0xc0, // Header form (1) + Fixed bit (1) + Long Header Type (00) + Reserved (00)
+		0xc0,                   // Header form (1) + Fixed bit (1) + Long Header Type (00) + Reserved (00)
 		0x00, 0x00, 0x00, 0x01, // Version
-		0x08, // DCID Length
+		0x08,                                           // DCID Length
 		0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, // Destination Connection ID
 		0x00, // SCID Length
 		// Token Length (varint)

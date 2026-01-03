@@ -56,9 +56,9 @@ var BTSignatures = [][]byte{
 	// Removed: "4:reqq" - too generic
 
 	// 5. Text / HTTP Trackers
-	[]byte("magnet:?xt=urn:btih:"), // v1 info hash - highly specific
-	[]byte("magnet:?xt=urn:btmh:"), // v2 multihash - highly specific
-	[]byte("udp://tracker."),       // Tracker URL - specific
+	[]byte("magnet:?xt=urn:btih:"),  // v1 info hash - highly specific
+	[]byte("magnet:?xt=urn:btmh:"),  // v2 multihash - highly specific
+	[]byte("udp://tracker."),        // Tracker URL - specific
 	[]byte("announce.php?passkey="), // Tracker announce - specific
 	[]byte("supportcrypto="),        // BitTorrent crypto param - specific
 	[]byte("requirecrypto="),        // BitTorrent crypto param - specific
@@ -69,13 +69,13 @@ var BTSignatures = [][]byte{
 	// 6. DHT Bencode Keys (from suricata)
 	// Note: Removed overly generic patterns like "d2:ip", "1:y1:q", "3:get", "3:put", "5:token"
 	// These are now only checked in context by CheckBencodeDHT()
-	[]byte("d1:ad2:id20:"),      // DHT query with args and 20-byte ID
-	[]byte("d1:rd2:id20:"),      // DHT response with data and 20-byte ID
-	[]byte("d1:el"),             // DHT error list (kept - relatively specific)
-	[]byte("4:ping"),            // DHT ping method (kept - has length prefix)
-	[]byte("9:find_node"),       // DHT find_node with length prefix
-	[]byte("9:get_peers"),       // DHT get_peers with length prefix
-	[]byte("13:announce_peer"),  // DHT announce_peer with length prefix
+	[]byte("d1:ad2:id20:"),     // DHT query with args and 20-byte ID
+	[]byte("d1:rd2:id20:"),     // DHT response with data and 20-byte ID
+	[]byte("d1:el"),            // DHT error list (kept - relatively specific)
+	[]byte("4:ping"),           // DHT ping method (kept - has length prefix)
+	[]byte("9:find_node"),      // DHT find_node with length prefix
+	[]byte("9:get_peers"),      // DHT get_peers with length prefix
+	[]byte("13:announce_peer"), // DHT announce_peer with length prefix
 	// Removed: "find_node" without length (too generic)
 	// Removed: "6:nodes6", "6:target", "6:nodes", "6:values" (checked in CheckBencodeDHT)
 

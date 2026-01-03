@@ -71,11 +71,10 @@ These files contain legitimate (non-BitTorrent) traffic to validate we don't hav
 | `ndpi-snmp.pcap` | SNMP network management | Ensure SNMP works | nDPI |
 | `ndpi-gre.pcapng` | GRE tunneling protocol | Ensure GRE tunnels work | nDPI |
 | `ndpi-smb.pcap` | SMB file sharing (Windows) | Ensure SMB file shares work | nDPI |
-| `ndpi-nfs.pcap` | NFS file sharing (Unix) | Ensure NFS file shares work | nDPI |
 | `ndpi-webdav.pcap` | WebDAV file sharing | Ensure WebDAV works | nDPI |
 | `ndpi-rsync.pcap` | Rsync file synchronization | Ensure Rsync works | nDPI |
 
-**Current false positive rate: 0.00%** (tested on 2235 packets across 50 protocols)
+**Current false positive rate: 0.00%** (tested on 2235 packets across 49 protocols)
 
 ### Known Limitations
 
@@ -94,6 +93,8 @@ These files contain legitimate (non-BitTorrent) traffic to validate we don't hav
 **Android Platform**: Android platform traffic pcaps contain mixed protocols, some with structural similarities to BitTorrent protocols, resulting in a 12.5% false positive rate on test traffic. This is due to the diverse nature of Android background services and apps. Individual apps should be whitelisted as needed.
 
 **iPhone Platform**: iPhone platform traffic pcaps contain mixed protocols, some with structural similarities to BitTorrent protocols, resulting in a 13% false positive rate on test traffic. Similar to Android, this is due to iOS background services and apps. Individual apps should be whitelisted as needed.
+
+**NFS (Network File System)**: NFS test pcap file uses an unsupported pcap format version (2.1) that cannot be parsed by the gopacket library. NFS traffic should work correctly in production, but cannot be tested with the available pcap file.
 
 ## Attribution
 
