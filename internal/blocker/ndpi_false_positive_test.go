@@ -60,6 +60,42 @@ func TestNDPIFalsePositives(t *testing.T) {
 			description: "Google Meet WebRTC traffic should not be detected",
 			maxPackets:  100,
 		},
+		{
+			name:        "WireGuard VPN",
+			pcapFile:    "../../test/testdata/pcap/ndpi-wireguard.pcap",
+			description: "WireGuard VPN traffic should not be detected as BitTorrent",
+			maxPackets:  50,
+		},
+		{
+			name:        "OpenVPN",
+			pcapFile:    "../../test/testdata/pcap/ndpi-openvpn.pcap",
+			description: "OpenVPN encrypted traffic should not be detected as BitTorrent",
+			maxPackets:  100,
+		},
+		{
+			name:        "DTLS Protocol",
+			pcapFile:    "../../test/testdata/pcap/ndpi-dtls.pcap",
+			description: "DTLS encrypted UDP traffic (used by WebRTC) should not be detected",
+			maxPackets:  100,
+		},
+		{
+			name:        "Steam Gaming",
+			pcapFile:    "../../test/testdata/pcap/ndpi-steam.pcapng",
+			description: "Steam gaming platform traffic should not be detected",
+			maxPackets:  50,
+		},
+		{
+			name:        "Kerberos Auth",
+			pcapFile:    "../../test/testdata/pcap/ndpi-kerberos.pcap",
+			description: "Kerberos enterprise authentication should not be detected",
+			maxPackets:  50,
+		},
+		{
+			name:        "MQTT IoT",
+			pcapFile:    "../../test/testdata/pcap/ndpi-mqtt.pcap",
+			description: "MQTT IoT messaging protocol should not be detected",
+			maxPackets:  50,
+		},
 	}
 
 	analyzer := NewAnalyzer(DefaultConfig())
@@ -170,6 +206,12 @@ func TestNDPIFalsePositiveRate(t *testing.T) {
 		"../../test/testdata/pcap/ndpi-quic.pcap",
 		"../../test/testdata/pcap/ndpi-rdp.pcap",
 		"../../test/testdata/pcap/ndpi-google-meet.pcapng",
+		"../../test/testdata/pcap/ndpi-wireguard.pcap",
+		"../../test/testdata/pcap/ndpi-openvpn.pcap",
+		"../../test/testdata/pcap/ndpi-dtls.pcap",
+		"../../test/testdata/pcap/ndpi-steam.pcapng",
+		"../../test/testdata/pcap/ndpi-kerberos.pcap",
+		"../../test/testdata/pcap/ndpi-mqtt.pcap",
 	}
 
 	analyzer := NewAnalyzer(DefaultConfig())

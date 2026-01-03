@@ -67,6 +67,19 @@ func CheckUDPTrackerDeep(packet []byte) bool {
 		return false
 	}
 
+	// CRITICAL: Reject DTLS packets which can have similar structure
+	// DTLS Content Types: 0x14=ChangeCipherSpec, 0x15=Alert, 0x16=Handshake, 0x17=ApplicationData
+	// DTLS versions: 0xFEFF=1.0, 0xFEFD=1.2, 0xFEFC=1.3
+	if len(packet) >= 3 {
+		contentType := packet[0]
+		version := binary.BigEndian.Uint16(packet[1:3])
+		// Check if this is DTLS (content type 20-23, version 0xFEFF, 0xFEFD, or 0xFEFC)
+		if (contentType >= 0x14 && contentType <= 0x17) &&
+			(version == 0xFEFF || version == 0xFEFD || version == 0xFEFC) {
+			return false // This is DTLS, not BitTorrent
+		}
+	}
+
 	// 1. Connect (Magic Number Check)
 	if len(packet) >= 16 && len(packet) < minSizeScrape {
 		if binary.BigEndian.Uint64(packet[:8]) == trackerProtocolID &&

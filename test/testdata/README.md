@@ -31,8 +31,14 @@ These files contain legitimate (non-BitTorrent) traffic to validate we don't hav
 | `ndpi-quic.pcap` | QUIC/HTTP3 traffic | Ensure QUIC is not blocked | nDPI |
 | `ndpi-rdp.pcap` | Remote Desktop Protocol | Ensure RDP is not blocked | nDPI |
 | `ndpi-google-meet.pcapng` | Google Meet WebRTC/STUN | Validate video conferencing works | nDPI |
+| `ndpi-wireguard.pcap` | WireGuard VPN traffic | Ensure modern VPN is not blocked | nDPI |
+| `ndpi-openvpn.pcap` | OpenVPN encrypted traffic | Ensure most popular VPN is not blocked | nDPI |
+| `ndpi-dtls.pcap` | DTLS encrypted UDP (WebRTC) | Critical test - DTLS can look like UDP tracker | nDPI |
+| `ndpi-steam.pcapng` | Steam gaming platform | Ensure gaming platforms work | nDPI |
+| `ndpi-kerberos.pcap` | Kerberos authentication | Ensure enterprise auth works | nDPI |
+| `ndpi-mqtt.pcap` | MQTT IoT messaging | Ensure IoT protocols work | nDPI |
 
-**Current false positive rate: 0.00%** (tested on 266 packets across 7 protocols)
+**Current false positive rate: 0.00%** (tested on 493 packets across 13 protocols)
 
 ## Attribution
 
