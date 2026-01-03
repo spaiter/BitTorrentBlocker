@@ -136,6 +136,24 @@ func CheckUDPTrackerDeep(packet []byte) bool {
 				return false
 			}
 
+			// CRITICAL: Reject connection IDs with too many trailing zero bytes
+			// Real UDP tracker connection IDs are pseudo-random 64-bit values
+			// Gaming protocols (GeForce Now, etc.) often have patterns like 0x90XX000000000000
+			// Count trailing zero bytes in connection ID
+			connIDBytes := packet[:8]
+			trailingZeroBytes := 0
+			for i := 7; i >= 0; i-- {
+				if connIDBytes[i] == 0 {
+					trailingZeroBytes++
+				} else {
+					break
+				}
+			}
+			// Reject if more than 3 trailing zero bytes (real connection IDs are random)
+			if trailingZeroBytes > 3 {
+				return false // Connection ID has too many trailing zeros, not BitTorrent
+			}
+
 			// Check PeerID at offset 36 (from udp_tracker_connection.cpp)
 			// A valid peer ID should start with a known client prefix
 			peerID := packet[36:40]
@@ -186,7 +204,33 @@ func CheckUDPTrackerDeep(packet []byte) bool {
 
 	// 3. Scrape
 	if len(packet) >= minSizeScrape {
-		if binary.BigEndian.Uint32(packet[8:12]) == actionScrape {
+		action := binary.BigEndian.Uint32(packet[8:12])
+		if action == actionScrape {
+			// CRITICAL: Validate connection_id (same as announce)
+			// Real tracker scrapes have a valid connection_id from previous connect response
+			connectionID := binary.BigEndian.Uint64(packet[:8])
+
+			// Connection IDs should not be zero or the magic number
+			if connectionID == 0 || connectionID == trackerProtocolID {
+				return false
+			}
+
+			// CRITICAL: Reject connection IDs with too many trailing zero bytes
+			// Gaming protocols (GeForce Now, etc.) have patterns like 0x90XX000000000000
+			connIDBytes := packet[:8]
+			trailingZeroBytes := 0
+			for i := 7; i >= 0; i-- {
+				if connIDBytes[i] == 0 {
+					trailingZeroBytes++
+				} else {
+					break
+				}
+			}
+			// Reject if more than 3 trailing zero bytes
+			if trailingZeroBytes > 3 {
+				return false // Connection ID has too many trailing zeros, not BitTorrent
+			}
+
 			return true
 		}
 	}
