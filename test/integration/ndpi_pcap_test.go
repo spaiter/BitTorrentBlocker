@@ -14,8 +14,8 @@ import (
 	"github.com/google/gopacket/pcapgo"
 )
 
-// TestNDPI_BitTorrentPcap tests BitTorrent detection using nDPI's test pcap files
-// These are real-world BitTorrent traffic captures from the nDPI project
+// TestNDPI_BitTorrentPcap tests BitTorrent detection using real-world pcap files
+// These are real-world BitTorrent traffic captures originally from the nDPI project
 func TestNDPI_BitTorrentPcap(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping nDPI pcap test in short mode")
@@ -30,42 +30,42 @@ func TestNDPI_BitTorrentPcap(t *testing.T) {
 	}{
 		{
 			name:            "Standard BitTorrent TCP",
-			pcapFile:        "nDPI/tests/cfgs/default/pcap/bittorrent.pcap",
+			pcapFile:        "testdata/pcap/bittorrent.pcap",
 			expectedFlows:   24,
 			shouldDetectAny: true,
 			description:     "Standard BitTorrent TCP protocol with handshakes and data transfer",
 		},
 		{
 			name:            "BitTorrent TCP Missing Initial Packets",
-			pcapFile:        "nDPI/tests/cfgs/default/pcap/bittorrent_tcp_miss.pcapng",
+			pcapFile:        "testdata/pcap/bittorrent_tcp_miss.pcapng",
 			expectedFlows:   1,
 			shouldDetectAny: true,
 			description:     "BitTorrent detection when initial TCP handshake packets are missing",
 		},
 		{
 			name:            "BitTorrent uTP (UDP)",
-			pcapFile:        "nDPI/tests/cfgs/default/pcap/bittorrent_utp.pcap",
+			pcapFile:        "testdata/pcap/bittorrent_utp.pcap",
 			expectedFlows:   2,
 			shouldDetectAny: true,
 			description:     "BitTorrent over UDP using Micro Transport Protocol (uTP)",
 		},
 		{
 			name:            "BitTorrent DHT DNS Queries",
-			pcapFile:        "nDPI/tests/cfgs/default/pcap/bt-dns.pcap",
+			pcapFile:        "testdata/pcap/bt-dns.pcap",
 			expectedFlows:   0, // DNS queries, not direct BT traffic
 			shouldDetectAny: false,
 			description:     "BitTorrent DHT DNS queries (not direct BT protocol)",
 		},
 		{
 			name:            "BitTorrent DHT Peer Search",
-			pcapFile:        "nDPI/tests/cfgs/default/pcap/bt_search.pcap",
+			pcapFile:        "testdata/pcap/bt_search.pcap",
 			expectedFlows:   0, // DHT search packets
 			shouldDetectAny: true,
 			description:     "BitTorrent DHT peer search queries",
 		},
 		{
 			name:            "BitTorrent over TLS",
-			pcapFile:        "nDPI/tests/cfgs/default/pcap/tls_torrent.pcapng",
+			pcapFile:        "testdata/pcap/tls_torrent.pcapng",
 			expectedFlows:   1,
 			shouldDetectAny: false, // Our detector doesn't decrypt TLS
 			description:     "BitTorrent encrypted with TLS (requires TLS decryption)",
@@ -77,17 +77,12 @@ func TestNDPI_BitTorrentPcap(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			// Get project root (go up from test/integration)
-			projectRoot, err := filepath.Abs(filepath.Join("..", ".."))
-			if err != nil {
-				t.Fatalf("Failed to get project root: %v", err)
-			}
-
-			pcapPath := filepath.Join(projectRoot, tc.pcapFile)
+			// Tests run from test/integration, so go up to project root
+			pcapPath := filepath.Join("..", tc.pcapFile)
 
 			// Check if pcap file exists
 			if _, err := os.Stat(pcapPath); os.IsNotExist(err) {
-				t.Skipf("Pcap file not found: %s (make sure nDPI folder is present)", pcapPath)
+				t.Skipf("Pcap file not found: %s", pcapPath)
 				return
 			}
 
@@ -188,16 +183,11 @@ func TestNDPI_CompareDetectionMethods(t *testing.T) {
 		t.Skip("Skipping nDPI comparison test in short mode")
 	}
 
-	projectRoot, err := filepath.Abs(filepath.Join("..", ".."))
-	if err != nil {
-		t.Fatalf("Failed to get project root: %v", err)
-	}
-
-	pcapPath := filepath.Join(projectRoot, "nDPI/tests/cfgs/default/pcap/bittorrent.pcap")
+	pcapPath := filepath.Join("..", "testdata", "pcap", "bittorrent.pcap")
 
 	// Check if pcap file exists
 	if _, err := os.Stat(pcapPath); os.IsNotExist(err) {
-		t.Skip("Pcap file not found: make sure nDPI folder is present")
+		t.Skip("Pcap file not found: make sure testdata/pcap folder is present")
 		return
 	}
 
