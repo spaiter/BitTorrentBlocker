@@ -9,6 +9,8 @@
 
 A high-performance Go library and CLI tool for detecting and blocking BitTorrent traffic using Deep Packet Inspection (DPI). Designed primarily for **VPS and home servers** that need to prevent BitTorrent usage to comply with local regulations or service provider terms.
 
+**[📚 Complete Documentation Index](DOCUMENTATION.md)** - All documentation organized by topic
+
 ## Primary Use Case
 
 **Server Liability Protection**: In many jurisdictions, server operators can be held liable for BitTorrent traffic passing through their infrastructure, especially when:
