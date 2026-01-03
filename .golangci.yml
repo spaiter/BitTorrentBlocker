@@ -47,5 +47,9 @@ issues:
     - path: detectors\.go
       text: "cyclomatic complexity.*CheckDHTNodes"
 
+    # Allow high complexity in detector functions (complex binary protocol validation)
+    - path: detectors\.go
+      text: "cyclomatic complexity.*(CheckUDPTrackerDeep|CheckUTPRobust|CheckBencodeDHT|CheckMSEEncryption)"
+
   max-issues-per-linter: 0
   max-same-issues: 0
