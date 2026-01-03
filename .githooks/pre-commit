@@ -4,11 +4,10 @@
 
 set -e
 
-# Don't prioritize Go bin directory to avoid using outdated golangci-lint
-# System-wide installations (chocolatey, etc) should be preferred
-# if [ -d "$HOME/go/bin" ]; then
-#     export PATH="$HOME/go/bin:$PATH"
-# fi
+# Prioritize Go bin directory for latest golangci-lint v2.7.2
+if [ -d "$HOME/go/bin" ]; then
+    export PATH="$HOME/go/bin:$PATH"
+fi
 
 echo "🔍 Running pre-commit checks..."
 
