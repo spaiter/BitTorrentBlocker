@@ -209,6 +209,78 @@ func TestNDPIFalsePositives(t *testing.T) {
 			description: "RTMP live streaming protocol should not be detected",
 			maxPackets:  100,
 		},
+		{
+			name:        "DNS over HTTPS",
+			pcapFile:    "../../test/testdata/pcap/ndpi-dns-doh.pcap",
+			description: "DNS over HTTPS (DoH) should not be detected",
+			maxPackets:  100,
+		},
+		{
+			name:        "DNS over TLS",
+			pcapFile:    "../../test/testdata/pcap/ndpi-dns-dot.pcap",
+			description: "DNS over TLS (DoT) should not be detected",
+			maxPackets:  100,
+		},
+		{
+			name:        "Snapchat",
+			pcapFile:    "../../test/testdata/pcap/ndpi-snapchat.pcap",
+			description: "Snapchat social media should not be detected",
+			maxPackets:  100,
+		},
+		{
+			name:        "Pinterest",
+			pcapFile:    "../../test/testdata/pcap/ndpi-pinterest.pcap",
+			description: "Pinterest social media should not be detected",
+			maxPackets:  100,
+		},
+		{
+			name:        "Tumblr",
+			pcapFile:    "../../test/testdata/pcap/ndpi-tumblr.pcap",
+			description: "Tumblr social media should not be detected",
+			maxPackets:  100,
+		},
+		{
+			name:        "AnyDesk",
+			pcapFile:    "../../test/testdata/pcap/ndpi-anydesk.pcapng",
+			description: "AnyDesk remote desktop should not be detected",
+			maxPackets:  100,
+		},
+		{
+			name:        "TeamViewer",
+			pcapFile:    "../../test/testdata/pcap/ndpi-teamviewer.pcap",
+			description: "TeamViewer remote access should not be detected",
+			maxPackets:  100,
+		},
+		{
+			name:        "Citrix",
+			pcapFile:    "../../test/testdata/pcap/ndpi-citrix.pcap",
+			description: "Citrix remote access should not be detected",
+			maxPackets:  100,
+		},
+		{
+			name:        "VNC",
+			pcapFile:    "../../test/testdata/pcap/ndpi-vnc.pcap",
+			description: "VNC remote desktop should not be detected",
+			maxPackets:  100,
+		},
+		{
+			name:        "Git",
+			pcapFile:    "../../test/testdata/pcap/ndpi-git.pcap",
+			description: "Git version control protocol should not be detected",
+			maxPackets:  100,
+		},
+		{
+			name:        "Cloudflare WARP",
+			pcapFile:    "../../test/testdata/pcap/ndpi-cloudflare-warp.pcap",
+			description: "Cloudflare WARP VPN should not be detected",
+			maxPackets:  100,
+		},
+		{
+			name:        "Google Chat",
+			pcapFile:    "../../test/testdata/pcap/ndpi-google-chat.pcapng",
+			description: "Google Chat messaging should not be detected",
+			maxPackets:  100,
+		},
 	}
 
 	analyzer := NewAnalyzer(DefaultConfig())
@@ -348,6 +420,18 @@ func TestNDPIFalsePositiveRate(t *testing.T) {
 		"../../test/testdata/pcap/ndpi-line.pcap",
 		"../../test/testdata/pcap/ndpi-sip.pcap",
 		"../../test/testdata/pcap/ndpi-rtmp.pcap",
+		"../../test/testdata/pcap/ndpi-dns-doh.pcap",
+		"../../test/testdata/pcap/ndpi-dns-dot.pcap",
+		"../../test/testdata/pcap/ndpi-snapchat.pcap",
+		"../../test/testdata/pcap/ndpi-pinterest.pcap",
+		"../../test/testdata/pcap/ndpi-tumblr.pcap",
+		"../../test/testdata/pcap/ndpi-anydesk.pcapng",
+		"../../test/testdata/pcap/ndpi-teamviewer.pcap",
+		"../../test/testdata/pcap/ndpi-citrix.pcap",
+		"../../test/testdata/pcap/ndpi-vnc.pcap",
+		"../../test/testdata/pcap/ndpi-git.pcap",
+		"../../test/testdata/pcap/ndpi-cloudflare-warp.pcap",
+		"../../test/testdata/pcap/ndpi-google-chat.pcapng",
 	}
 
 	analyzer := NewAnalyzer(DefaultConfig())

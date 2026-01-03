@@ -54,8 +54,20 @@ These files contain legitimate (non-BitTorrent) traffic to validate we don't hav
 | `ndpi-line.pcap` | LINE messaging app | Ensure LINE works | nDPI |
 | `ndpi-sip.pcap` | SIP VoIP protocol | Ensure VoIP calls work | nDPI |
 | `ndpi-rtmp.pcap` | RTMP live streaming | Ensure live streaming works | nDPI |
+| `ndpi-dns-doh.pcap` | DNS over HTTPS (DoH) | Ensure secure DNS works | nDPI |
+| `ndpi-dns-dot.pcap` | DNS over TLS (DoT) | Ensure secure DNS works | nDPI |
+| `ndpi-snapchat.pcap` | Snapchat social media | Ensure Snapchat works | nDPI |
+| `ndpi-pinterest.pcap` | Pinterest social media | Ensure Pinterest works | nDPI |
+| `ndpi-tumblr.pcap` | Tumblr social media | Ensure Tumblr works | nDPI |
+| `ndpi-anydesk.pcapng` | AnyDesk remote desktop | Ensure remote desktop works | nDPI |
+| `ndpi-teamviewer.pcap` | TeamViewer remote access | Ensure TeamViewer works | nDPI |
+| `ndpi-citrix.pcap` | Citrix remote access | Ensure Citrix works | nDPI |
+| `ndpi-vnc.pcap` | VNC remote desktop | Ensure VNC works | nDPI |
+| `ndpi-git.pcap` | Git version control | Ensure Git operations work | nDPI |
+| `ndpi-cloudflare-warp.pcap` | Cloudflare WARP VPN | Ensure Cloudflare VPN works | nDPI |
+| `ndpi-google-chat.pcapng` | Google Chat messaging | Ensure Google Chat works | nDPI |
 
-**Current false positive rate: 0.00%** (tested on 1565 packets across 30 protocols)
+**Current false positive rate: 0.00%** (tested on 2097 packets across 42 protocols)
 
 ### Known Limitations
 
