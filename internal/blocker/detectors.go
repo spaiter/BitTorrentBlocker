@@ -67,6 +67,17 @@ func CheckUDPTrackerDeep(packet []byte) bool {
 		return false
 	}
 
+	// CRITICAL: Reject CAPWAP control packets
+	// CAPWAP header: Preamble (1 byte) | HLEN (5 bits) | RID (5 bits) | WBID (5 bits) | T (1 bit) | F (1 bit) | L (1 bit) | W (1 bit) | M (1 bit) | K (1 bit) | Flags (3 bits)
+	// Common pattern: 0x00 0x10 or 0x00 0x20 at start (preamble=0, HLEN=1 or 2)
+	if packet[0] == 0x00 && (packet[1] == 0x10 || packet[1] == 0x20 || packet[1] == 0x00) {
+		// Additional validation: check for structured TLV data typical of CAPWAP
+		// CAPWAP uses Type-Length-Value encoding with specific patterns
+		if len(packet) >= 14 && packet[12] == 0x00 && packet[13] == 0x00 {
+			return false // This looks like CAPWAP, not BitTorrent
+		}
+	}
+
 	// CRITICAL: Reject DTLS packets which can have similar structure
 	// DTLS Content Types: 0x14=ChangeCipherSpec, 0x15=Alert, 0x16=Handshake, 0x17=ApplicationData
 	// DTLS versions: 0xFEFF=1.0, 0xFEFD=1.2, 0xFEFC=1.3
@@ -90,15 +101,46 @@ func CheckUDPTrackerDeep(packet []byte) bool {
 
 	// 2. Announce (Action + PeerID Check)
 	if len(packet) >= minSizeAnnounce {
-		if binary.BigEndian.Uint32(packet[8:12]) == actionAnnounce {
+		action := binary.BigEndian.Uint32(packet[8:12])
+		if action == actionAnnounce {
+			// CRITICAL: Must validate connection_id (first 8 bytes)
+			// Real tracker announces have a valid connection_id from previous connect response
+			// Random data or other protocols (like CAPWAP) will have invalid connection_ids
+			connectionID := binary.BigEndian.Uint64(packet[:8])
+
+			// Connection IDs should not be zero or the magic number (that's the connect request)
+			if connectionID == 0 || connectionID == trackerProtocolID {
+				return false
+			}
+
 			// Check PeerID at offset 36 (from udp_tracker_connection.cpp)
+			// A valid peer ID should start with a known client prefix
 			peerID := packet[36:40]
 			for _, prefix := range PeerIDPrefixes {
 				if bytes.HasPrefix(peerID, prefix) {
 					return true
 				}
 			}
-			return true // Even without prefix, Announce structure is unique
+
+			// Without a valid peer ID prefix, require additional validation
+			// Check that info_hash (20 bytes at offset 16) looks like a hash
+			// Real torrents won't have all zeros or all 0xFF
+			infoHash := packet[16:36]
+			allZero := true
+			allFF := true
+			for _, b := range infoHash {
+				if b != 0 {
+					allZero = false
+				}
+				if b != 0xFF {
+					allFF = false
+				}
+			}
+			if allZero || allFF {
+				return false // Invalid info_hash
+			}
+
+			return true
 		}
 	}
 
@@ -124,6 +166,16 @@ func CheckUTPRobust(packet []byte) bool {
 	if len(packet) >= 8 {
 		if packet[4] == 0x21 && packet[5] == 0x12 && packet[6] == 0xA4 && packet[7] == 0x42 {
 			return false // This is a STUN packet, not uTP
+		}
+	}
+
+	// CRITICAL: Reject DTLS/CAPWAP packets
+	// DTLS versions: 0xFEFF (1.0), 0xFEFD (1.2), 0xFEFC (1.3)
+	// CAPWAP often contains DTLS encapsulation
+	if len(packet) >= 7 {
+		version := binary.BigEndian.Uint16(packet[5:7])
+		if version == 0xFEFF || version == 0xFEFD || version == 0xFEFC {
+			return false // This is DTLS/CAPWAP, not uTP
 		}
 	}
 
