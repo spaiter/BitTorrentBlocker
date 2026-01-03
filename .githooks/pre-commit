@@ -34,14 +34,14 @@ OVERALL_STATUS=0
 echo ""
 echo "📝 Checking code formatting..."
 # Handle both Unix (/) and Windows (\) path separators
-UNFORMATTED=$(gofmt -l . | grep -v "^vendor" | grep -vE "^nDPI[/\\]" | grep -vE "^suricata[/\\]" | grep -vE "^suricata-verify[/\\]" | grep -vE "^sing-box[/\\]" || true)
+UNFORMATTED=$(gofmt -l . | grep -v "^vendor" || true)
 if [ -z "$UNFORMATTED" ]; then
     print_status 0 "Code formatting check passed"
 else
     print_status 1 "Code formatting check failed"
     echo -e "${YELLOW}Unformatted files:${NC}"
     echo "$UNFORMATTED"
-    echo -e "${YELLOW}Run: gofmt -w \$(find . -name '*.go' -not -path './vendor/*' -not -path './nDPI/*' -not -path './suricata/*' -not -path './suricata-verify/*' -not -path './sing-box/*')${NC}"
+    echo -e "${YELLOW}Run: gofmt -w \$(find . -name '*.go' -not -path './vendor/*')${NC}"
     OVERALL_STATUS=1
 fi
 
@@ -50,7 +50,7 @@ echo ""
 echo "🔎 Running golangci-lint..."
 if command -v golangci-lint &> /dev/null; then
     # Get list of staged Go files (excluding gitignored directories)
-    STAGED_GO_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.go$' | grep -vE "^(vendor|nDPI|suricata|suricata-verify|sing-box)/" || true)
+    STAGED_GO_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.go$' | grep -v "^vendor/" || true)
 
     if [ -n "$STAGED_GO_FILES" ]; then
         # Only lint staged files with reduced timeout (1 minute)
@@ -75,8 +75,8 @@ fi
 # 3. Run tests (without race detector on Windows if CGO is disabled)
 echo ""
 echo "🧪 Running tests..."
-# Exclude gitignored test directories
-TEST_DIRS=$(go list ./... | grep -v "/nDPI/" | grep -v "/suricata/" | grep -v "/suricata-verify/" | grep -v "/sing-box/")
+# Get all test directories (vendor is automatically excluded by go list)
+TEST_DIRS=$(go list ./...)
 if [ "$CGO_ENABLED" = "0" ] || [ -z "$CGO_ENABLED" ]; then
     # Skip race detector if CGO is disabled (common on Windows)
     if echo "$TEST_DIRS" | xargs go test -timeout=5m; then

@@ -7,10 +7,6 @@ run:
   modules-download-mode: readonly
   skip-dirs:
     - vendor
-    - nDPI
-    - suricata
-    - suricata-verify
-    - sing-box
 
 linters:
   enable:
@@ -38,10 +34,6 @@ linters-settings:
 issues:
   exclude-dirs:
     - vendor
-    - nDPI
-    - suricata
-    - suricata-verify
-    - sing-box
   exclude-rules:
     # Exclude some linters from running on tests
     - path: _test\.go
