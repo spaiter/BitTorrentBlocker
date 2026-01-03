@@ -19,7 +19,7 @@ import (
 // - Malformed packets (packet 15)
 func TestSuricataDHTDetection(t *testing.T) {
 	// Open the Suricata test pcap
-	f, err := os.Open("../../test/testdata/pcap/suricata-dht.pcap")
+	f, err := os.Open("../../test/testdata/pcap/true-positive/suricata-dht.pcap")
 	if err != nil {
 		t.Fatalf("Failed to open suricata-dht.pcap: %v", err)
 	}
@@ -137,7 +137,7 @@ func TestSuricataDHTDetection(t *testing.T) {
 
 // TestSuricataDHTPacketDetails provides detailed analysis of specific Suricata test packets
 func TestSuricataDHTPacketDetails(t *testing.T) {
-	f, err := os.Open("../../test/testdata/pcap/suricata-dht.pcap")
+	f, err := os.Open("../../test/testdata/pcap/true-positive/suricata-dht.pcap")
 	if err != nil {
 		t.Skipf("Skipping detailed test - pcap not found: %v", err)
 	}
