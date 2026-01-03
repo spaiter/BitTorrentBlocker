@@ -18,7 +18,6 @@ func TestNDPIFalsePositives(t *testing.T) {
 	// Protocols to exclude due to known limitations (high false positive rate or technical issues)
 	excludedProtocols := map[string]string{
 		"zoom":                           "Zoom's proprietary protocol occasionally uses UDP packets similar to uTP (<2% packets)",
-		"teams":                          "Microsoft Teams occasionally uses UDP packets that resemble uTP (<2% packets)",
 		"ipsec":                          "IPSec ESP encrypted packets may contain uTP-like patterns after encryption",
 		"roblox":                         "Roblox gaming protocol has structures very similar to uTP (43% FP rate)",
 		"nfsv2":                          "NFS version 2 pcap file uses unsupported format (Unknown minor version 1)",
@@ -207,9 +206,10 @@ func TestNDPIFalsePositives(t *testing.T) {
 func TestNDPIFalsePositiveRate(t *testing.T) {
 	// Protocols to exclude (same as in TestNDPIFalsePositives)
 	excludedProtocols := map[string]bool{
-		"zoom": true, "teams": true,
-		"ipsec": true, "roblox": true,
-		"nfsv2": true, "nfsv3": true, "1kxun": true,
+		"zoom":   true,
+		"ipsec":  true,
+		"roblox": true,
+		"nfsv2":  true, "nfsv3": true, "1kxun": true,
 		"fuzz-2021-10-13": true,
 		"geforcenow":      true, "glbp": true, "hart_ip": true,
 		"lru_ipv6_caches": true, "netease_games": true, "quic046": true,
