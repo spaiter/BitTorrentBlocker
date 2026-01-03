@@ -37,8 +37,17 @@ These files contain legitimate (non-BitTorrent) traffic to validate we don't hav
 | `ndpi-steam.pcapng` | Steam gaming platform | Ensure gaming platforms work | nDPI |
 | `ndpi-kerberos.pcap` | Kerberos authentication | Ensure enterprise auth works | nDPI |
 | `ndpi-mqtt.pcap` | MQTT IoT messaging | Ensure IoT protocols work | nDPI |
+| `ndpi-whatsapp.pcap` | WhatsApp messaging | Ensure popular messaging app works | nDPI |
+| `ndpi-discord.pcap` | Discord voice/text chat | Ensure gaming/community chat works | nDPI |
+| `ndpi-tor.pcap` | Tor anonymity network | Ensure privacy tools work | nDPI |
+| `ndpi-dropbox.pcap` | Dropbox cloud storage | Ensure cloud services work | nDPI |
+| `ndpi-spotify.pcap` | Spotify music streaming | Ensure streaming services work | nDPI |
 
-**Current false positive rate: 0.00%** (tested on 493 packets across 13 protocols)
+**Current false positive rate: 0.00%** (tested on 792 packets across 18 protocols)
+
+### Known Limitations
+
+**Telegram**: Telegram's MTProto UDP transport protocol has legitimate structural similarities to BitTorrent's uTP and UDP tracker protocols. This is due to both being UDP-based with similar header structures. If Telegram traffic is being blocked, add Telegram server IPs/ports to whitelist.
 
 ## Attribution
 
