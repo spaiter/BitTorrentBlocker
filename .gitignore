@@ -18,8 +18,8 @@ coverage-integration.out
 # Logs and temp files
 *.log
 
-# Vendor (commented out - vendor directory is committed for Nix builds)
-# /vendor/
+# Vendor directory - not needed in git (go.mod/go.sum lock dependencies)
+/vendor/
 
 # Go build cache
 GOCACHE/
