@@ -404,6 +404,66 @@ func TestNDPIFalsePositives(t *testing.T) {
 			description: "Among Us game traffic should not be detected",
 			maxPackets:  100,
 		},
+		{
+			name:        "Telnet",
+			pcapFile:    "../../test/testdata/pcap/ndpi-telnet.pcap",
+			description: "Telnet protocol should not be detected",
+			maxPackets:  100,
+		},
+		{
+			name:        "NNTP",
+			pcapFile:    "../../test/testdata/pcap/ndpi-nntp.pcap",
+			description: "NNTP news protocol should not be detected",
+			maxPackets:  100,
+		},
+		{
+			name:        "HTTP/2",
+			pcapFile:    "../../test/testdata/pcap/ndpi-http2.pcapng",
+			description: "HTTP/2 protocol should not be detected",
+			maxPackets:  100,
+		},
+		{
+			name:        "JSON",
+			pcapFile:    "../../test/testdata/pcap/ndpi-json.pcapng",
+			description: "JSON over HTTP should not be detected",
+			maxPackets:  100,
+		},
+		{
+			name:        "SOCKS Proxy",
+			pcapFile:    "../../test/testdata/pcap/ndpi-socks.pcap",
+			description: "SOCKS proxy protocol should not be detected",
+			maxPackets:  100,
+		},
+		{
+			name:        "Bitcoin",
+			pcapFile:    "../../test/testdata/pcap/ndpi-bitcoin.pcap",
+			description: "Bitcoin cryptocurrency traffic should not be detected",
+			maxPackets:  100,
+		},
+		{
+			name:        "Ethereum",
+			pcapFile:    "../../test/testdata/pcap/ndpi-ethereum.pcap",
+			description: "Ethereum cryptocurrency traffic should not be detected",
+			maxPackets:  100,
+		},
+		{
+			name:        "Monero",
+			pcapFile:    "../../test/testdata/pcap/ndpi-monero.pcap",
+			description: "Monero cryptocurrency traffic should not be detected",
+			maxPackets:  100,
+		},
+		{
+			name:        "Mining",
+			pcapFile:    "../../test/testdata/pcap/ndpi-mining.pcapng",
+			description: "Cryptocurrency mining traffic should not be detected",
+			maxPackets:  100,
+		},
+		{
+			name:        "UPnP",
+			pcapFile:    "../../test/testdata/pcap/ndpi-upnp.pcap",
+			description: "UPnP media discovery should not be detected",
+			maxPackets:  100,
+		},
 		// Roblox skipped: Roblox gaming protocol uses UDP packets with structures similar to uTP.
 		// 28/65 packets detected (43% false positive rate). Whitelist Roblox servers if needed.
 		// Android skipped: Android platform traffic includes various protocols, some with uTP-like patterns.
@@ -583,6 +643,16 @@ func TestNDPIFalsePositiveRate(t *testing.T) {
 		"../../test/testdata/pcap/ndpi-rtsp.pcap",
 		"../../test/testdata/pcap/ndpi-activision.pcap",
 		"../../test/testdata/pcap/ndpi-among-us.pcap",
+		"../../test/testdata/pcap/ndpi-telnet.pcap",
+		"../../test/testdata/pcap/ndpi-nntp.pcap",
+		"../../test/testdata/pcap/ndpi-http2.pcapng",
+		"../../test/testdata/pcap/ndpi-json.pcapng",
+		"../../test/testdata/pcap/ndpi-socks.pcap",
+		"../../test/testdata/pcap/ndpi-bitcoin.pcap",
+		"../../test/testdata/pcap/ndpi-ethereum.pcap",
+		"../../test/testdata/pcap/ndpi-monero.pcap",
+		"../../test/testdata/pcap/ndpi-mining.pcapng",
+		"../../test/testdata/pcap/ndpi-upnp.pcap",
 		// Roblox skipped - see comment in TestNDPIFalsePositives
 		// Android skipped - see comment in TestNDPIFalsePositives
 		// iPhone skipped - see comment in TestNDPIFalsePositives

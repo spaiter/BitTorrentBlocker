@@ -86,8 +86,18 @@ These files contain legitimate (non-BitTorrent) traffic to validate we don't hav
 | `ndpi-rtsp.pcap` | RTSP streaming protocol | Ensure RTSP works | nDPI |
 | `ndpi-activision.pcap` | Activision gaming platform | Ensure Activision works | nDPI |
 | `ndpi-among-us.pcap` | Among Us game traffic | Ensure Among Us works | nDPI |
+| `ndpi-telnet.pcap` | Telnet protocol | Ensure Telnet works | nDPI |
+| `ndpi-nntp.pcap` | NNTP news protocol | Ensure NNTP works | nDPI |
+| `ndpi-http2.pcapng` | HTTP/2 protocol | Ensure HTTP/2 works | nDPI |
+| `ndpi-json.pcapng` | JSON over HTTP | Ensure JSON works | nDPI |
+| `ndpi-socks.pcap` | SOCKS proxy protocol | Ensure SOCKS works | nDPI |
+| `ndpi-bitcoin.pcap` | Bitcoin cryptocurrency traffic | Ensure Bitcoin works | nDPI |
+| `ndpi-ethereum.pcap` | Ethereum cryptocurrency traffic | Ensure Ethereum works | nDPI |
+| `ndpi-monero.pcap` | Monero cryptocurrency traffic | Ensure Monero works | nDPI |
+| `ndpi-mining.pcapng` | Cryptocurrency mining traffic | Ensure mining works | nDPI |
+| `ndpi-upnp.pcap` | UPnP media discovery | Ensure UPnP works | nDPI |
 
-**Current false positive rate: 0.00%** (tested on 2657 packets across 62 protocols)
+**Current false positive rate: 0.00%** (tested on 3099 packets across 72 protocols)
 
 ### Known Limitations
 
