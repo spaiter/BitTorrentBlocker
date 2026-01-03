@@ -67,6 +67,29 @@ func CheckUDPTrackerDeep(packet []byte) bool {
 		return false
 	}
 
+	// CRITICAL: Reject DNS queries and responses
+	// DNS header: Transaction ID (2) | Flags (2) | Questions (2) | Answers (2) | Authority (2) | Additional (2)
+	// Standard query: flags & 0x8000 == 0 (QR bit = 0 for query)
+	// Standard response: flags & 0x8000 != 0 (QR bit = 1 for response)
+	if len(packet) >= 12 {
+		flags := binary.BigEndian.Uint16(packet[2:4])
+		qdcount := binary.BigEndian.Uint16(packet[4:6])
+
+		// DNS queries typically have: QR=0, QDCOUNT >= 1
+		// DNS responses typically have: QR=1
+		isQuery := (flags&0x8000) == 0 && qdcount > 0 && qdcount < 100
+		isResponse := (flags&0x8000) != 0
+
+		if isQuery || isResponse {
+			// Additional validation: check OPCODE (bits 11-14 of flags)
+			// Standard query = 0, Inverse query = 1, Status = 2
+			opcode := (flags >> 11) & 0x0F
+			if opcode <= 2 {
+				return false // This is DNS, not BitTorrent
+			}
+		}
+	}
+
 	// CRITICAL: Reject CAPWAP control packets
 	// CAPWAP header: Preamble (1 byte) | HLEN (5 bits) | RID (5 bits) | WBID (5 bits) | T (1 bit) | F (1 bit) | L (1 bit) | W (1 bit) | M (1 bit) | K (1 bit) | Flags (3 bits)
 	// Common pattern: 0x00 0x10 or 0x00 0x20 at start (preamble=0, HLEN=1 or 2)
