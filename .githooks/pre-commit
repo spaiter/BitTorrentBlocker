@@ -45,23 +45,27 @@ else
     OVERALL_STATUS=1
 fi
 
-# 2. Run linter
+# 2. Run linter (only on staged Go files for speed)
 echo ""
 echo "🔎 Running golangci-lint..."
 if command -v golangci-lint &> /dev/null; then
-    # Run linter and capture output
-    LINT_OUTPUT=$(golangci-lint run --timeout=3m 2>&1)
-    LINT_EXIT=$?
+    # Get list of staged Go files (excluding gitignored directories)
+    STAGED_GO_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.go$' | grep -vE "^(vendor|nDPI|suricata|suricata-verify|sing-box)/" || true)
 
-    # Check if there are actual issues (not just typechecking errors from excluded dirs)
-    if echo "$LINT_OUTPUT" | grep -q "^0 issues"; then
-        print_status 0 "Linting passed"
-    elif [ $LINT_EXIT -eq 0 ]; then
-        print_status 0 "Linting passed"
+    if [ -n "$STAGED_GO_FILES" ]; then
+        # Only lint staged files with reduced timeout (1 minute)
+        if echo "$STAGED_GO_FILES" | xargs golangci-lint run --timeout=1m --new-from-rev=HEAD~ 2>&1 | tee /tmp/lint.out | grep -q "^0 issues"; then
+            print_status 0 "Linting passed"
+        elif [ ${PIPESTATUS[1]} -eq 0 ]; then
+            print_status 0 "Linting passed"
+        else
+            cat /tmp/lint.out
+            print_status 1 "Linting failed"
+            OVERALL_STATUS=1
+        fi
+        rm -f /tmp/lint.out
     else
-        echo "$LINT_OUTPUT"
-        print_status 1 "Linting failed"
-        OVERALL_STATUS=1
+        echo -e "${YELLOW}⚠ No staged Go files to lint${NC}"
     fi
 else
     echo -e "${YELLOW}⚠ golangci-lint not found, skipping linting${NC}"
