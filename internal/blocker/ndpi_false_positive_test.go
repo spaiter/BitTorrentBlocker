@@ -158,6 +158,57 @@ func TestNDPIFalsePositives(t *testing.T) {
 		// Microsoft Teams skipped: Like Zoom, Teams occasionally uses UDP packets that
 		// structurally resemble uTP. This is rare (<2% of packets) but cannot be reliably
 		// distinguished without application-layer inspection. Whitelist Teams servers if needed.
+		{
+			name:        "Facebook",
+			pcapFile:    "../../test/testdata/pcap/ndpi-facebook.pcap",
+			description: "Facebook social media traffic should not be detected",
+			maxPackets:  100,
+		},
+		{
+			name:        "Instagram",
+			pcapFile:    "../../test/testdata/pcap/ndpi-instagram.pcap",
+			description: "Instagram social media traffic should not be detected",
+			maxPackets:  100,
+		},
+		{
+			name:        "Reddit",
+			pcapFile:    "../../test/testdata/pcap/ndpi-reddit.pcap",
+			description: "Reddit social media traffic should not be detected",
+			maxPackets:  100,
+		},
+		// Signal Messenger skipped: Signal's encrypted messaging protocol occasionally uses
+		// UDP packets with structures similar to uTP (version 1, type 0, extension 1).
+		// Similar to Zoom/Teams limitation. Whitelist Signal servers if needed.
+		{
+			name:        "Viber",
+			pcapFile:    "../../test/testdata/pcap/ndpi-viber.pcap",
+			description: "Viber messaging and calls should not be detected",
+			maxPackets:  100,
+		},
+		{
+			name:        "WeChat",
+			pcapFile:    "../../test/testdata/pcap/ndpi-wechat.pcap",
+			description: "WeChat messaging platform should not be detected",
+			maxPackets:  100,
+		},
+		{
+			name:        "LINE",
+			pcapFile:    "../../test/testdata/pcap/ndpi-line.pcap",
+			description: "LINE messaging app should not be detected",
+			maxPackets:  100,
+		},
+		{
+			name:        "SIP VoIP",
+			pcapFile:    "../../test/testdata/pcap/ndpi-sip.pcap",
+			description: "SIP VoIP protocol should not be detected",
+			maxPackets:  100,
+		},
+		{
+			name:        "RTMP Streaming",
+			pcapFile:    "../../test/testdata/pcap/ndpi-rtmp.pcap",
+			description: "RTMP live streaming protocol should not be detected",
+			maxPackets:  100,
+		},
 	}
 
 	analyzer := NewAnalyzer(DefaultConfig())
@@ -288,6 +339,15 @@ func TestNDPIFalsePositiveRate(t *testing.T) {
 		"../../test/testdata/pcap/ndpi-webex.pcap",
 		"../../test/testdata/pcap/ndpi-skype.pcap",
 		// Microsoft Teams skipped - see comment in TestNDPIFalsePositives
+		"../../test/testdata/pcap/ndpi-facebook.pcap",
+		"../../test/testdata/pcap/ndpi-instagram.pcap",
+		"../../test/testdata/pcap/ndpi-reddit.pcap",
+		// Signal Messenger skipped - see comment in TestNDPIFalsePositives
+		"../../test/testdata/pcap/ndpi-viber.pcap",
+		"../../test/testdata/pcap/ndpi-wechat.pcap",
+		"../../test/testdata/pcap/ndpi-line.pcap",
+		"../../test/testdata/pcap/ndpi-sip.pcap",
+		"../../test/testdata/pcap/ndpi-rtmp.pcap",
 	}
 
 	analyzer := NewAnalyzer(DefaultConfig())

@@ -46,8 +46,16 @@ These files contain legitimate (non-BitTorrent) traffic to validate we don't hav
 | `ndpi-youtube.pcap` | YouTube video streaming | Ensure YouTube works | nDPI |
 | `ndpi-webex.pcap` | Cisco WebEx conferencing | Ensure enterprise video conferencing works | nDPI |
 | `ndpi-skype.pcap` | Skype video calls | Ensure Skype works | nDPI |
+| `ndpi-facebook.pcap` | Facebook social media | Ensure social media works | nDPI |
+| `ndpi-instagram.pcap` | Instagram social media | Ensure Instagram works | nDPI |
+| `ndpi-reddit.pcap` | Reddit social media | Ensure Reddit works | nDPI |
+| `ndpi-viber.pcap` | Viber messaging and calls | Ensure Viber works | nDPI |
+| `ndpi-wechat.pcap` | WeChat messaging platform | Ensure WeChat works | nDPI |
+| `ndpi-line.pcap` | LINE messaging app | Ensure LINE works | nDPI |
+| `ndpi-sip.pcap` | SIP VoIP protocol | Ensure VoIP calls work | nDPI |
+| `ndpi-rtmp.pcap` | RTMP live streaming | Ensure live streaming works | nDPI |
 
-**Current false positive rate: 0.00%** (tested on 1083 packets across 22 protocols)
+**Current false positive rate: 0.00%** (tested on 1565 packets across 30 protocols)
 
 ### Known Limitations
 
@@ -56,6 +64,8 @@ These files contain legitimate (non-BitTorrent) traffic to validate we don't hav
 **Zoom**: Zoom's proprietary video protocol occasionally uses UDP packets with structures similar to uTP (version 1, type 0, extension 1). This affects <2% of Zoom packets but cannot be reliably distinguished without application-layer inspection. If Zoom is being blocked, whitelist Zoom server IPs/ports.
 
 **Microsoft Teams**: Like Zoom, Teams occasionally uses UDP packets that structurally resemble uTP. This is rare (<2% of packets) but may cause intermittent connection issues. If Teams is being blocked, whitelist Teams server IPs/ports.
+
+**Signal Messenger**: Signal's encrypted messaging protocol occasionally uses UDP packets with structures similar to uTP (version 1, type 0, extension 1). Similar to Zoom/Teams limitation. If Signal is being blocked, whitelist Signal server IPs/ports.
 
 ## Attribution
 
