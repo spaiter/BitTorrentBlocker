@@ -39,6 +39,12 @@ Integration tests verify:
 6. **Detection Logging**: Detailed packet logging for false positive analysis
 7. **Monitor-Only Mode**: Detection without IP banning
 8. **Combined Features**: Detection logging + monitor mode together
+9. **nDPI Validation**: Real-world BitTorrent pcap files from nDPI project
+   - Standard BitTorrent TCP traffic (24 flows)
+   - BitTorrent with missing TCP handshake packets
+   - BitTorrent over uTP (UDP-based protocol)
+   - DHT peer searches
+   - BitTorrent over TLS (encrypted)
 
 ## Requirements
 
