@@ -7,9 +7,9 @@ import (
 	"runtime"
 )
 
-// Filter represents the XDP-based packet filter
+// Filter represents the XDP-based packet filter (stub for non-Linux)
 type Filter struct {
-	ifaceName string
+	// Empty struct - no fields needed for stub implementation
 }
 
 // NewXDPFilter returns an error on non-Linux platforms
