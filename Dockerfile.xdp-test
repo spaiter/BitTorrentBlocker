@@ -20,8 +20,11 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy source code
+# Copy source code (respects .dockerignore)
 COPY . .
+
+# Explicitly copy test files (they're excluded by .dockerignore)
+COPY test/ test/
 
 # Build the project to ensure everything compiles
 RUN go build -o /tmp/btblocker ./cmd/btblocker

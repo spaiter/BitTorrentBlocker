@@ -35,6 +35,7 @@ func splitAndTrim(s, sep string) []string {
 	return result
 }
 
+//nolint:gocyclo // Main function complexity is acceptable for CLI entry point
 func main() {
 	// Define flags
 	showVersion := flag.Bool("version", false, "Show version information")
