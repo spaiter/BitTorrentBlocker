@@ -1,4 +1,4 @@
-.PHONY: build run test generate-ebpf generate-ebpf-docker clean
+.PHONY: build run test generate-ebpf generate-ebpf-docker test-xdp-docker clean
 
 # Generate eBPF bytecode from C source (requires Linux with clang)
 generate-ebpf:
@@ -22,6 +22,13 @@ run: build
 
 test:
 	go test ./...
+
+# Run XDP integration tests using Docker (requires privileged container)
+test-xdp-docker:
+	@echo "Building XDP test container..."
+	docker build -f Dockerfile.xdp-test -t btblocker-xdp-test .
+	@echo "Running XDP integration tests (requires privileged mode)..."
+	docker run --rm --privileged --network host btblocker-xdp-test
 
 clean:
 	rm -rf bin/

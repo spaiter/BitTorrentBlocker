@@ -108,6 +108,81 @@ removed, err := mapMgr.CleanupExpired()
 - **IPv4 Only**: Current implementation supports IPv4 only
 - **Generic Mode**: Uses XDP generic mode for compatibility (slower than native mode but works on all drivers)
 
+## Testing
+
+### Integration Tests
+
+XDP integration tests are located in `test/integration/xdp_test.go` and validate:
+
+- XDP program lifecycle (load/unload)
+- IP map operations (add/remove/lookup)
+- Multiple IP handling
+- Expiration and cleanup
+- Periodic cleanup automation
+- IPv4-only validation
+- Large-scale operations (1000+ IPs)
+- Concurrent access safety
+- Interface validation
+
+### Running Tests
+
+#### Option 1: Docker (Recommended - Works on Any Platform)
+
+```bash
+# From project root
+make test-xdp-docker
+```
+
+This will:
+1. Build a Linux container with XDP support
+2. Run integration tests with `--privileged` mode (required for XDP)
+3. Display test results
+
+**Requirements**: Docker with privileged container support
+
+#### Option 2: Native Linux
+
+On Linux with XDP support:
+
+```bash
+# Run integration tests
+go test -v -tags "linux,integration" -timeout 5m ./test/integration/...
+
+# Run specific test
+go test -v -tags "linux,integration" -run TestXDPFilterLifecycle ./test/integration/...
+
+# Run without large-scale tests
+go test -v -tags "linux,integration" -short ./test/integration/...
+```
+
+**Requirements**:
+- Linux kernel 4.18+ with XDP support
+- Root privileges or CAP_NET_ADMIN capability
+- Network interface (tests use loopback `lo`)
+
+### Test Coverage
+
+The test suite includes:
+
+1. **Basic Operations** (`TestXDPFilterLifecycle`, `TestXDPMapOperations`)
+2. **Multiple IPs** (`TestXDPMultipleIPs`)
+3. **Expiration** (`TestXDPExpiration`, `TestXDPPeriodicCleanup`)
+4. **IPv4 Validation** (`TestXDPIPv4Only`)
+5. **Stress Testing** (`TestXDPLargeScale` - 1000 IPs)
+6. **Concurrency** (`TestXDPConcurrentOperations` - 10 goroutines)
+7. **Error Handling** (`TestXDPInterfaceValidation`)
+
+### Continuous Integration
+
+Add to GitHub Actions workflow:
+
+```yaml
+- name: Run XDP Integration Tests
+  run: make test-xdp-docker
+```
+
+No special runner configuration needed - standard GitHub runners with Docker work perfectly!
+
 ## Future Improvements
 
 - Native XDP mode for supported drivers (40-100% faster)
