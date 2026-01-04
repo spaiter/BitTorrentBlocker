@@ -886,7 +886,7 @@ Based on benchmarks, **single-core performance**:
 - Bounded concurrency for extremely high traffic
 - Prevents goroutine explosion on 10+ Gbps links
 - Configurable queue depth and worker count
-- See [WORKER_POOL_EXAMPLE.md](WORKER_POOL_EXAMPLE.md) for integration
+- See [docs/performance/WORKER_POOL_EXAMPLE.md](docs/performance/WORKER_POOL_EXAMPLE.md) for integration
 
 #### Performance Features
 
@@ -950,7 +950,7 @@ For extreme throughput scenarios:
 
 4. **sync.Pool for Buffers** - Reduce GC pressure on high-traffic (5-10% gain)
 
-See [MULTITHREADING_ANALYSIS.md](MULTITHREADING_ANALYSIS.md) and [GO_CONCURRENCY_PATTERNS.md](GO_CONCURRENCY_PATTERNS.md) for details.
+See [docs/performance/MULTITHREADING_ANALYSIS.md](docs/performance/MULTITHREADING_ANALYSIS.md) and [docs/performance/GO_CONCURRENCY_PATTERNS.md](docs/performance/GO_CONCURRENCY_PATTERNS.md) for details.
 
 ### Performance by Processor Type
 
@@ -1120,7 +1120,7 @@ DETECTION_LOG=/var/log/btblocker.log ./btblocker
 |----------------|---------------|-------|
 | **<1 Gbps** | Default (unlimited goroutines) | Perfect for most VPS/home servers |
 | **1-10 Gbps** | Default + PGO build | `go build -pgo=auto` |
-| **10-50 Gbps** | Worker pool (16-32 workers) | See [WORKER_POOL_EXAMPLE.md](WORKER_POOL_EXAMPLE.md) |
+| **10-50 Gbps** | Worker pool (16-32 workers) | See [docs/performance/WORKER_POOL_EXAMPLE.md](docs/performance/WORKER_POOL_EXAMPLE.md) |
 | **50+ Gbps** | Worker pool + NUMA tuning | Multi-socket server optimization |
 | **100+ Gbps** | Multi-instance + load balancing | Multiple blockers with traffic distribution |
 
@@ -1198,7 +1198,7 @@ sudo kill -SIGQUIT $(pgrep btblocker)
 # Look for goroutine explosion
 
 # Solution: Enable worker pool
-# See WORKER_POOL_EXAMPLE.md
+# See docs/performance/WORKER_POOL_EXAMPLE.md
 ```
 
 #### Memory Growth
@@ -1292,9 +1292,9 @@ For detailed documentation on specific topics:
 
 - **Installation**: [README Installation Section](#installation)
 - **NixOS Deployment**: [docs/NIXOS_DEPLOYMENT.md](docs/NIXOS_DEPLOYMENT.md)
-- **Performance Tuning**: [MULTITHREADING_ANALYSIS.md](MULTITHREADING_ANALYSIS.md)
-- **Worker Pool**: [WORKER_POOL_EXAMPLE.md](WORKER_POOL_EXAMPLE.md)
-- **Go Concurrency**: [GO_CONCURRENCY_PATTERNS.md](GO_CONCURRENCY_PATTERNS.md)
+- **Performance Tuning**: [docs/performance/MULTITHREADING_ANALYSIS.md](docs/performance/MULTITHREADING_ANALYSIS.md)
+- **Worker Pool**: [docs/performance/WORKER_POOL_EXAMPLE.md](docs/performance/WORKER_POOL_EXAMPLE.md)
+- **Go Concurrency**: [docs/performance/GO_CONCURRENCY_PATTERNS.md](docs/performance/GO_CONCURRENCY_PATTERNS.md)
 - **False Positive Analysis**: [FALSE_POSITIVE_ANALYSIS.md](FALSE_POSITIVE_ANALYSIS.md)
 - **Publishing/Releases**: [docs/PUBLISHING.md](docs/PUBLISHING.md)
 - **Complete Index**: [DOCUMENTATION.md](DOCUMENTATION.md)

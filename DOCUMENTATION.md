@@ -41,25 +41,25 @@ Complete documentation index for the BitTorrent Blocker project.
 
 ## Performance & Optimization
 
-- **[PERFORMANCE.md](PERFORMANCE.md)** - Benchmark results and analysis
+- **[docs/performance/PERFORMANCE.md](docs/performance/PERFORMANCE.md)** - Benchmark results and analysis
   - Detector function performance (0.19 ns/op to 928 ns/op)
   - End-to-end throughput (135M - 920M packets/sec)
   - Zero-allocation design
   - Real-world throughput estimates by traffic type
 
-- **[MULTITHREADING_ANALYSIS.md](MULTITHREADING_ANALYSIS.md)** - Concurrency architecture
+- **[docs/performance/MULTITHREADING_ANALYSIS.md](docs/performance/MULTITHREADING_ANALYSIS.md)** - Concurrency architecture
   - Goroutine-based design (current default, optimal for <10 Gbps)
   - Processor-specific performance (AMD Ryzen, Intel, ARM)
   - NUMA tuning for multi-socket servers
   - Worker pool recommendations for high traffic
 
-- **[GO_CONCURRENCY_PATTERNS.md](GO_CONCURRENCY_PATTERNS.md)** - Go optimization patterns
+- **[docs/performance/GO_CONCURRENCY_PATTERNS.md](docs/performance/GO_CONCURRENCY_PATTERNS.md)** - Go optimization patterns
   - Why goroutines beat OS threads (1000× cheaper, 50× faster switching)
   - sync.Pool for buffer reuse (90% fewer allocations)
   - Atomic counters for lock-free statistics
   - Profile-Guided Optimization (PGO) for 3-5% free gains
 
-- **[WORKER_POOL_EXAMPLE.md](WORKER_POOL_EXAMPLE.md)** - High-traffic optimization
+- **[docs/performance/WORKER_POOL_EXAMPLE.md](docs/performance/WORKER_POOL_EXAMPLE.md)** - High-traffic optimization
   - Optional bounded concurrency for >10 Gbps scenarios
   - Integration guide with code examples
   - Performance benchmarks and trade-offs
@@ -106,17 +106,17 @@ Complete documentation index for the BitTorrent Blocker project.
 
 ### I want to understand performance
 
-1. **[PERFORMANCE.md](PERFORMANCE.md)** - Benchmark results
-2. **[MULTITHREADING_ANALYSIS.md](MULTITHREADING_ANALYSIS.md)** - Concurrency strategy
-3. **[GO_CONCURRENCY_PATTERNS.md](GO_CONCURRENCY_PATTERNS.md)** - Optimization patterns
-4. **[WORKER_POOL_EXAMPLE.md](WORKER_POOL_EXAMPLE.md)** - High-traffic optimization
+1. **[docs/performance/PERFORMANCE.md](docs/performance/PERFORMANCE.md)** - Benchmark results
+2. **[docs/performance/MULTITHREADING_ANALYSIS.md](docs/performance/MULTITHREADING_ANALYSIS.md)** - Concurrency strategy
+3. **[docs/performance/GO_CONCURRENCY_PATTERNS.md](docs/performance/GO_CONCURRENCY_PATTERNS.md)** - Optimization patterns
+4. **[docs/performance/WORKER_POOL_EXAMPLE.md](docs/performance/WORKER_POOL_EXAMPLE.md)** - High-traffic optimization
 
 ### I want to deploy in production
 
 1. **[README.md](README.md#production-deployment)** - Deployment scenarios
 2. **NixOS**: [docs/NIXOS_DEPLOYMENT.md](docs/NIXOS_DEPLOYMENT.md)
-3. **High traffic (>10 Gbps)**: [WORKER_POOL_EXAMPLE.md](WORKER_POOL_EXAMPLE.md)
-4. **Performance tuning**: [MULTITHREADING_ANALYSIS.md](MULTITHREADING_ANALYSIS.md)
+3. **High traffic (>10 Gbps)**: [docs/performance/WORKER_POOL_EXAMPLE.md](docs/performance/WORKER_POOL_EXAMPLE.md)
+4. **Performance tuning**: [docs/performance/MULTITHREADING_ANALYSIS.md](docs/performance/MULTITHREADING_ANALYSIS.md)
 
 ### I want to build and release
 
@@ -128,7 +128,7 @@ Complete documentation index for the BitTorrent Blocker project.
 
 1. **[CLAUDE.md](CLAUDE.md)** - Architecture and development guide
 2. **[README.md](README.md#detection-accuracy)** - Detection methodology
-3. **[PERFORMANCE.md](PERFORMANCE.md)** - Performance characteristics
+3. **[docs/performance/PERFORMANCE.md](docs/performance/PERFORMANCE.md)** - Performance characteristics
 
 ## File Organization
 
@@ -138,17 +138,17 @@ BitTorrentBlocker/
 ├── CLAUDE.md                     # AI development guide
 ├── DOCUMENTATION.md              # This file (documentation index)
 │
-├── Performance & Optimization/
-│   ├── PERFORMANCE.md            # Benchmark results
-│   ├── MULTITHREADING_ANALYSIS.md # Threading strategy
-│   ├── GO_CONCURRENCY_PATTERNS.md # Go optimization patterns
-│   └── WORKER_POOL_EXAMPLE.md    # High-traffic optimization
-│
-└── docs/                         # Deployment & publishing guides
+└── docs/                         # All documentation
     ├── NIXOS_DEPLOYMENT.md       # Complete NixOS guide
     ├── PUBLISHING.md             # Package publishing automation
     ├── CACHIX_SETUP.md           # Nix binary cache
-    └── NIXPKGS_SUBMISSION.md     # nixpkgs submission guide
+    ├── NIXPKGS_SUBMISSION.md     # nixpkgs submission guide
+    │
+    └── performance/              # Performance & optimization guides
+        ├── PERFORMANCE.md        # Benchmark results
+        ├── MULTITHREADING_ANALYSIS.md # Threading strategy
+        ├── GO_CONCURRENCY_PATTERNS.md # Go optimization patterns
+        └── WORKER_POOL_EXAMPLE.md     # High-traffic optimization
 ```
 
 ## Documentation Status
@@ -157,14 +157,14 @@ BitTorrentBlocker/
 |----------|--------|---------|
 | README.md | ✅ Current | Main entry point, installation, usage |
 | CLAUDE.md | ✅ Current | AI development guide |
-| PERFORMANCE.md | ✅ Current | Benchmark results and analysis |
-| MULTITHREADING_ANALYSIS.md | ✅ Current | Concurrency architecture |
-| GO_CONCURRENCY_PATTERNS.md | ✅ Current | Go optimization patterns |
-| WORKER_POOL_EXAMPLE.md | ✅ Current | High-traffic optimization |
 | docs/NIXOS_DEPLOYMENT.md | ✅ Current | Complete NixOS deployment |
 | docs/PUBLISHING.md | ✅ Current | Automated publishing |
 | docs/CACHIX_SETUP.md | ✅ Current | Nix binary cache |
 | docs/NIXPKGS_SUBMISSION.md | ✅ Current | nixpkgs submission |
+| docs/performance/PERFORMANCE.md | ✅ Current | Benchmark results and analysis |
+| docs/performance/MULTITHREADING_ANALYSIS.md | ✅ Current | Concurrency architecture |
+| docs/performance/GO_CONCURRENCY_PATTERNS.md | ✅ Current | Go optimization patterns |
+| docs/performance/WORKER_POOL_EXAMPLE.md | ✅ Current | High-traffic optimization |
 
 ## Support
 
