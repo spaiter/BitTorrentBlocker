@@ -32,7 +32,7 @@
             src = ./.;
 
             # Vendor hash - Nix will download Go dependencies
-            vendorHash = "sha256-63ZuA7u5qyM2ILuaISUaLAS3TfznBSvKHY4spiEoUU8=";
+            vendorHash = "sha256-+0utyHXDtVnqw5B4fxBJFV+b7WZyw0VZFsUJHOIo8D8=";
 
             # Build inputs for libpcap
             buildInputs = with pkgs; [
