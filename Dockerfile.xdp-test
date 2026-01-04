@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y \
     iproute2 \
     iputils-ping \
     net-tools \
+    libpcap-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
