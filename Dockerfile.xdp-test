@@ -1,7 +1,7 @@
 # Dockerfile for running XDP integration tests
 # Requires: --privileged --network host (for network interface access)
 # Usage: docker build -f Dockerfile.xdp-test -t btblocker-xdp-test .
-#        docker run --rm --privileged --network host -v ${PWD}:/src btblocker-xdp-test
+#        docker run --rm --privileged --network host btblocker-xdp-test
 
 FROM golang:1.25-bookworm
 
@@ -20,7 +20,7 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy source code including tests (.dockerignore now allows test files)
+# Copy source code (Makefile temporarily disables .dockerignore to include tests)
 COPY . .
 
 # Build the project to ensure everything compiles

@@ -26,7 +26,10 @@ test:
 # Run XDP integration tests using Docker (requires privileged container)
 test-xdp-docker:
 	@echo "Building XDP test container..."
-	docker build -f Dockerfile.xdp-test -t btblocker-xdp-test .
+	@# Temporarily disable .dockerignore to include test files
+	@if [ -f .dockerignore ]; then mv .dockerignore .dockerignore.tmp; fi
+	@docker build -f Dockerfile.xdp-test -t btblocker-xdp-test . || (mv .dockerignore.tmp .dockerignore 2>/dev/null; exit 1)
+	@if [ -f .dockerignore.tmp ]; then mv .dockerignore.tmp .dockerignore; fi
 	@echo "Running XDP integration tests (requires privileged mode)..."
 	docker run --rm --privileged --network host btblocker-xdp-test
 
