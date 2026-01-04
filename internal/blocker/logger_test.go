@@ -171,10 +171,8 @@ func TestLoggerLevels(t *testing.T) {
 				if !strings.Contains(output, tt.expectedLevel) {
 					t.Errorf("Expected log to contain %q, got: %q", tt.expectedLevel, output)
 				}
-			} else {
-				if output != "" {
-					t.Errorf("Expected no log output but got: %q", output)
-				}
+			} else if output != "" {
+				t.Errorf("Expected no log output but got: %q", output)
 			}
 		})
 	}

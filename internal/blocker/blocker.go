@@ -83,9 +83,9 @@ func (b *Blocker) Start(ctx context.Context) error {
 
 	// Configure NFQUEUE
 	nfqConfig := nfqueue.Config{
-		NfQueue:      uint16(b.config.QueueNum),
-		MaxPacketLen: 0xFFFF, // 64KB max packet size
-		MaxQueueLen:  1024,   // Queue up to 1024 packets
+		NfQueue:      uint16(b.config.QueueNum), // #nosec G115 - QueueNum is validated to be 0-65535 in New()
+		MaxPacketLen: 0xFFFF,                    // 64KB max packet size
+		MaxQueueLen:  1024,                      // Queue up to 1024 packets
 		Copymode:     nfqueue.NfQnlCopyPacket,
 		Flags:        nfqueue.NfQaCfgFlagGSO, // Enable GSO (Generic Segmentation Offload)
 	}
@@ -113,7 +113,7 @@ func (b *Blocker) Start(ctx context.Context) error {
 
 	b.logger.Info("NFQUEUE registered, processing packets inline...")
 
-	// Block until context is cancelled
+	// Block until context is canceled
 	<-ctx.Done()
 	b.logger.Info("Shutting down...")
 	return ctx.Err()
@@ -121,6 +121,8 @@ func (b *Blocker) Start(ctx context.Context) error {
 
 // processNFQPacket processes a single packet from NFQUEUE and returns verdict
 // This function is called synchronously for each packet - must be FAST!
+//
+//nolint:gocyclo // Packet processing requires sequential checks, complexity acceptable for performance
 func (b *Blocker) processNFQPacket(attr nfqueue.Attribute) int {
 	// Default verdict: accept packet
 	verdict := nfqueue.NfAccept
