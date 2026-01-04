@@ -27,4 +27,4 @@ COPY . .
 RUN go build -o /tmp/btblocker ./cmd/btblocker
 
 # Run integration tests with verbose output
-CMD ["go", "test", "-v", "-tags", "linux,integration", "-timeout", "5m", "./test/integration/..."]
+CMD ["go", "test", "-v", "-tags", "linux,integration", "-timeout", "5m", "github.com/example/BitTorrentBlocker/test/integration"]
