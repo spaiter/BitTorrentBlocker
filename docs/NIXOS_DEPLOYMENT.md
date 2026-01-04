@@ -327,6 +327,42 @@ program xdp_blocker: map blocked_ips: map create: operation not permitted
    };
    ```
 
+### NFQUEUE Buffer Overflow
+
+**Error**: "NFQUEUE error: netlink receive: recvmsg: no buffer space available"
+
+**Cause**: The netlink socket buffer is too small to handle the incoming packet rate. This happens on high-traffic networks where packets arrive faster than the userspace program can process them.
+
+**Solution**: The NixOS module automatically configures netlink socket buffers (as of commit e8ed7fe). If you're still seeing this error:
+
+1. **Update to the latest module**:
+   ```bash
+   nix flake update bittorrent-blocker
+   sudo nixos-rebuild switch --flake .#yourhostname
+   ```
+
+2. **Verify sysctl settings are applied**:
+   ```bash
+   # Check netlink buffer sizes
+   sysctl net.core.rmem_max net.core.wmem_max
+   # Should output:
+   # net.core.rmem_max = 134217728
+   # net.core.wmem_max = 134217728
+   ```
+
+3. **If using an older version** (before commit e8ed7fe), manually add to your configuration:
+   ```nix
+   boot.kernel.sysctl = {
+     "net.core.rmem_max" = 134217728;     # 128MB
+     "net.core.rmem_default" = 16777216;  # 16MB
+     "net.core.wmem_max" = 134217728;     # 128MB
+     "net.core.wmem_default" = 16777216;  # 16MB
+     "net.core.optmem_max" = 81920;       # 80KB
+   };
+   ```
+
+**Note**: These settings require a system reboot to take effect.
+
 ### No Traffic Being Analyzed
 
 **Problem**: Blocker running but not seeing traffic
