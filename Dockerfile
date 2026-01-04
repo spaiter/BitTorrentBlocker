@@ -35,19 +35,17 @@ FROM alpine:latest
 # Install runtime dependencies
 RUN apk add --no-cache \
     libpcap \
-    iptables \
-    ipset \
     ca-certificates
 
 # Copy binary from builder
 COPY --from=builder /btblocker /usr/local/bin/btblocker
 
-# Create non-root user (note: btblocker needs CAP_NET_ADMIN, typically run with --cap-add)
+# Create non-root user (note: btblocker needs CAP_NET_ADMIN for XDP, typically run with --cap-add)
 RUN addgroup -g 1000 btblocker && \
     adduser -D -u 1000 -G btblocker btblocker
 
-# Note: The container needs to run with NET_ADMIN capability
-# docker run --cap-add=NET_ADMIN ...
+# Note: The container needs to run with NET_ADMIN capability for XDP
+# docker run --cap-add=NET_ADMIN --network=host ...
 
 ENTRYPOINT ["/usr/local/bin/btblocker"]
 CMD ["--help"]

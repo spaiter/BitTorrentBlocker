@@ -78,8 +78,6 @@
             go-tools
             libpcap
             pkg-config
-            ipset
-            nftables
             golangci-lint
           ];
 
