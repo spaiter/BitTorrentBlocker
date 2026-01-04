@@ -169,9 +169,9 @@ func TestAnalyzer_CustomThresholds(t *testing.T) {
 	// Test with custom configuration
 	config := Config{
 		Interfaces:  []string{"eth0"},
-		IPSetName:   "test",
 		BanDuration: 3600,
 		LogLevel:    "info",
+		XDPMode:     "generic",
 	}
 	analyzer := NewAnalyzer(config)
 

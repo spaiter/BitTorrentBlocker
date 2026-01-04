@@ -13,11 +13,12 @@ func TestDefaultConfig(t *testing.T) {
 		expected interface{}
 	}{
 		{"Interfaces", len(config.Interfaces) == 1 && config.Interfaces[0] == "eth0", true},
-		{"IPSetName", config.IPSetName, "torrent_block"},
 		{"BanDuration", config.BanDuration, 18000},
 		{"LogLevel", config.LogLevel, "info"},
 		{"DetectionLogPath", config.DetectionLogPath, ""},
 		{"MonitorOnly", config.MonitorOnly, false},
+		{"XDPMode", config.XDPMode, "generic"},
+		{"CleanupInterval", config.CleanupInterval, 300},
 	}
 
 	for _, tt := range tests {
@@ -44,31 +45,22 @@ func TestConfigValidation(t *testing.T) {
 			name: "Custom valid config",
 			config: Config{
 				Interfaces:  []string{"eth0"},
-				IPSetName:   "custom_set",
 				BanDuration: 7200,
 				LogLevel:    "debug",
+				XDPMode:     "native",
 			},
 			valid: true,
 		},
 		{
 			name: "Multiple interfaces",
 			config: Config{
-				Interfaces:  []string{"eth0", "wg0", "awg0"},
-				IPSetName:   "test",
-				BanDuration: 3600,
-				LogLevel:    "info",
+				Interfaces:      []string{"eth0", "wg0", "awg0"},
+				BanDuration:     3600,
+				LogLevel:        "info",
+				XDPMode:         "generic",
+				CleanupInterval: 600,
 			},
 			valid: true,
-		},
-		{
-			name: "Empty IPSetName",
-			config: Config{
-				Interfaces:  []string{"eth0"},
-				IPSetName:   "",
-				BanDuration: 3600,
-				LogLevel:    "info",
-			},
-			valid: true, // Empty is valid (might not use ipset)
 		},
 	}
 
@@ -88,19 +80,16 @@ func TestConfigCustomValues(t *testing.T) {
 	// Test that custom config values are properly stored and used
 	config := Config{
 		Interfaces:       []string{"eth0", "wg0"},
-		IPSetName:        "custom_blocker",
 		BanDuration:      86400, // 24 hours
 		LogLevel:         "debug",
 		DetectionLogPath: "/var/log/detections.log",
 		MonitorOnly:      true,
+		XDPMode:          "native",
+		CleanupInterval:  600,
 	}
 
 	if len(config.Interfaces) != 2 || config.Interfaces[0] != "eth0" || config.Interfaces[1] != "wg0" {
 		t.Errorf("Interfaces = %v, want [\"eth0\", \"wg0\"]", config.Interfaces)
-	}
-
-	if config.IPSetName != "custom_blocker" {
-		t.Errorf("IPSetName = %v, want custom_blocker", config.IPSetName)
 	}
 
 	if config.BanDuration != 86400 {
@@ -118,14 +107,22 @@ func TestConfigCustomValues(t *testing.T) {
 	if config.MonitorOnly != true {
 		t.Errorf("MonitorOnly = %v, want true", config.MonitorOnly)
 	}
+
+	if config.XDPMode != "native" {
+		t.Errorf("XDPMode = %v, want native", config.XDPMode)
+	}
+
+	if config.CleanupInterval != 600 {
+		t.Errorf("CleanupInterval = %v, want 600", config.CleanupInterval)
+	}
 }
 
 func TestConfigInAnalyzer(t *testing.T) {
 	config := Config{
 		Interfaces:  []string{"eth0"},
-		IPSetName:   "test",
 		BanDuration: 3600,
 		LogLevel:    "info",
+		XDPMode:     "generic",
 	}
 
 	analyzer := NewAnalyzer(config)
