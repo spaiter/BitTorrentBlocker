@@ -71,15 +71,14 @@ Then in your `/etc/nixos/configuration.nix`:
   # Enable the BitTorrent blocker service
   services.btblocker = {
     enable = true;
-    queueNum = 0;
-    entropyThreshold = 7.6;
+    interface = "eth0";  # Your network interface (supports comma-separated list)
     ipsetName = "torrent_block";
-    banDuration = "18000";  # 5 hours
-    interfaces = [ "eth0" ];  # Your network interface(s)
+    banDuration = 18000;  # 5 hours (in seconds)
+    logLevel = "info";
   };
 
   # Ensure required kernel modules are loaded
-  boot.kernelModules = [ "nfnetlink_queue" "xt_NFQUEUE" ];
+  boot.kernelModules = [ "ip_set" "ip_set_hash_ip" ];
 }
 ```
 
@@ -184,16 +183,18 @@ Complete example for `/etc/nixos/configuration.nix`:
     enable = true;
 
     # Network configuration
-    interfaces = [ "eth0" "wlan0" ];  # Monitor multiple interfaces
-
-    # Detection parameters
-    queueNum = 0;
-    entropyThreshold = 7.6;
-    minPayloadSize = 60;
+    interface = "eth0,wlan0";  # Monitor multiple interfaces (comma-separated)
 
     # Blocking configuration
     ipsetName = "torrent_block";
-    banDuration = "18000";  # 5 hours in seconds
+    banDuration = 18000;  # 5 hours in seconds
+    logLevel = "info";
+
+    # Optional: Detection logging for analysis
+    detectionLogPath = "/var/log/btblocker/detections.log";
+
+    # Optional: Monitor-only mode (no blocking, just logging)
+    monitorOnly = false;
 
     # Whitelist common services
     whitelistPorts = [
@@ -209,8 +210,8 @@ Complete example for `/etc/nixos/configuration.nix`:
 
   # Load required kernel modules
   boot.kernelModules = [
-    "nfnetlink_queue"
-    "xt_NFQUEUE"
+    "ip_set"
+    "ip_set_hash_ip"
   ];
 
   # Optional: Add resource limits

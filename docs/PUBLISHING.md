@@ -121,8 +121,7 @@ nix profile install github:spaiter/BitTorrentBlocker/v0.2.1
         {
           services.btblocker = {
             enable = true;
-            interfaces = [ "eth0" ];
-            entropyThreshold = 7.6;
+            interface = "eth0";
           };
         }
       ];

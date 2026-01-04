@@ -21,12 +21,10 @@ Add the module to your NixOS configuration:
   # Enable the blocker service
   services.btblocker = {
     enable = true;
-    queueNum = 0;
-    entropyThreshold = 7.6;
+    interface = "eth0";  # Your network interface (supports comma-separated list)
     ipsetName = "torrent_block";
     banDuration = 18000;  # 5 hours
     logLevel = "info";    # error, warn, info, or debug
-    interfaces = [ "eth0" ];  # Your network interface(s)
   };
 
   # Kernel modules are automatically loaded by the module
@@ -63,13 +61,14 @@ iptables -t mangle -L -n -v
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `enable` | bool | false | Enable the BitTorrent blocker service |
-| `queueNum` | int | 0 | Netfilter queue number to use |
-| `entropyThreshold` | float | 7.6 | Entropy threshold for encrypted traffic detection |
-| `minPayloadSize` | int | 60 | Minimum payload size for entropy analysis (bytes) |
+| `interface` | string | "eth0" | Network interface(s) to monitor (comma-separated) |
 | `ipsetName` | string | "torrent_block" | Name of ipset for banned IPs |
 | `banDuration` | int | 18000 | Ban duration in seconds (5 hours) |
 | `logLevel` | string | "info" | Log level: error, warn, info, or debug |
-| `interfaces` | list | ["eth0"] | Network interfaces to monitor |
+| `detectionLogPath` | string | "" | Path to detection log file (empty = disabled) |
+| `monitorOnly` | bool | false | If true, only log detections without banning |
+| `firewallBackend` | string | "nftables" | Firewall backend (nftables or iptables) |
+| `cleanupOnStop` | bool | false | Destroy ipset when service stops |
 | `whitelistPorts` | list | [22, 53, 80, 443, 853, 5222, 5269] | Ports to never block |
 
 ### Example: Custom Configuration
@@ -78,20 +77,17 @@ iptables -t mangle -L -n -v
 services.btblocker = {
   enable = true;
 
-  # Use queue 1 instead of 0
-  queueNum = 1;
-
-  # More aggressive entropy threshold
-  entropyThreshold = 7.0;
-
-  # Monitor multiple interfaces
-  interfaces = [ "eth0" "eth1" "wlan0" ];
+  # Monitor multiple interfaces (comma-separated)
+  interface = "eth0,eth1,wlan0";
 
   # Longer ban duration (24 hours)
   banDuration = 86400;
 
   # Enable debug logging
   logLevel = "debug";
+
+  # Enable detection logging for analysis
+  detectionLogPath = "/var/log/btblocker/detections.log";
 
   # Add custom whitelisted ports
   whitelistPorts = [ 22 53 80 443 853 3000 8080 ];
@@ -218,9 +214,8 @@ sudo tcpdump -i eth0 -n port 6881
    sudo nixos-rebuild switch
    journalctl -u btblocker -f
    ```
-2. Increase `entropyThreshold` (default: 7.6 → 7.8 or 8.0)
-3. Increase `minPayloadSize` (default: 60 → 100 or 200)
-4. Add ports to `whitelistPorts`
+2. Add ports to `whitelistPorts`
+3. Use `monitorOnly = true` to log without blocking (for testing)
 
 ### High CPU Usage
 
@@ -370,17 +365,17 @@ For high-traffic servers:
 services.btblocker = {
   enable = true;
 
-  # Use higher entropy threshold (less sensitive, better performance)
-  entropyThreshold = 7.8;
+  # Monitor specific interfaces only
+  interface = "eth0";
 
-  # Larger min payload size (skip small packets)
-  minPayloadSize = 100;
+  # Use shorter ban duration to reduce ipset size
+  banDuration = 3600;  # 1 hour
 
-  # Use multiple queues for parallel processing (requires code modification)
-  queueNum = 0;
+  # Use iptables backend if nftables has issues
+  firewallBackend = "iptables";
 };
 
-# Increase nfqueue buffer
+# Increase connection tracking limits
 boot.kernel.sysctl = {
   "net.netfilter.nf_conntrack_max" = 262144;
   "net.core.netdev_max_backlog" = 5000;

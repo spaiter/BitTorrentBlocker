@@ -756,7 +756,7 @@ sudo ipset list torrent_block
 The blocker uses multiple complementary techniques to minimize false positives:
 - **Whitelist**: Common ports excluded (HTTP, HTTPS, SSH, DNS, XMPP, DNS-over-TLS)
 - **11-Layer Detection**: Ordered by specificity to reduce false positives
-- **Conservative Thresholds**: Entropy threshold (7.6), minimum payload size (60 bytes)
+- **Context-Specific Thresholds**: Optimized entropy thresholds per detection method (e.g., 6.5 for DH keys)
 - **Extensive Testing**: 165+ test cases covering edge cases and real-world patterns
 - **Critical MSE/PE Detection**: Catches 70-80% of encrypted BitTorrent traffic
 - **Multi-BEP Support**: Implements detection for BEPs 5, 6, 10, 11, 14, 19, 29

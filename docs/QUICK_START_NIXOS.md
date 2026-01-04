@@ -43,9 +43,7 @@ nix flake init
   # Enable BitTorrent blocker
   services.btblocker = {
     enable = true;
-    interfaces = [ "eth0" ];  # Your interface
-    queueNum = 0;
-    entropyThreshold = 7.6;
+    interface = "eth0";  # Your interface (supports comma-separated list)
     banDuration = 18000;  # 5 hours
     logLevel = "info";    # error, warn, info, or debug
   };
@@ -107,13 +105,14 @@ sudo iptables -L -n -v
 | Option | Default | Description |
 |--------|---------|-------------|
 | `enable` | false | Enable the service |
-| `queueNum` | 0 | NFQUEUE number |
-| `entropyThreshold` | 7.6 | Encryption detection threshold |
-| `minPayloadSize` | 60 | Min bytes for analysis |
+| `interface` | "eth0" | Network interface(s) to monitor (comma-separated) |
 | `ipsetName` | "torrent_block" | Name of ipset |
 | `banDuration` | 18000 | Ban time in seconds |
 | `logLevel` | "info" | Log level: error, warn, info, debug |
-| `interfaces` | ["eth0"] | Interfaces to monitor |
+| `detectionLogPath` | "" | Path to detection log file (empty = disabled) |
+| `monitorOnly` | false | If true, only log detections without banning |
+| `firewallBackend` | "nftables" | Firewall backend (nftables or iptables) |
+| `cleanupOnStop` | false | Destroy ipset when service stops |
 | `whitelistPorts` | [22,53,80,443,...] | Ports to never block |
 
 ## Common Tasks
@@ -129,22 +128,24 @@ nix flake update
 sudo nixos-rebuild switch --flake .#yourhostname
 ```
 
-### Adjust Sensitivity
+### Enable Monitor-Only Mode
 
-More aggressive (blocks more):
+For testing without blocking:
 ```nix
-services.btblocker.entropyThreshold = 7.0;  # Lower = more sensitive
+services.btblocker.monitorOnly = true;
 ```
 
-Less aggressive (fewer false positives):
+### Enable Detection Logging
+
+For detailed analysis:
 ```nix
-services.btblocker.entropyThreshold = 7.8;  # Higher = less sensitive
+services.btblocker.detectionLogPath = "/var/log/btblocker/detections.log";
 ```
 
 ### Monitor Multiple Interfaces
 
 ```nix
-services.btblocker.interfaces = [ "eth0" "eth1" "wlan0" ];
+services.btblocker.interface = "eth0,eth1,wlan0";  # Comma-separated
 ```
 
 ### Longer Ban Duration
@@ -192,14 +193,14 @@ cat /proc/net/netfilter/nfnetlink_queue
 
 ### Too many false positives
 
-Increase entropy threshold:
-```nix
-services.btblocker.entropyThreshold = 7.8;
-```
-
 Add ports to whitelist:
 ```nix
 services.btblocker.whitelistPorts = [ 22 53 80 443 8080 ];
+```
+
+Or use monitor-only mode for testing:
+```nix
+services.btblocker.monitorOnly = true;
 ```
 
 ## Full Documentation
@@ -218,7 +219,7 @@ services.btblocker.whitelistPorts = [ 22 53 80 443 8080 ];
 
   # Boot
   boot = {
-    kernelModules = [ "nfnetlink_queue" "xt_NFQUEUE" ];
+    kernelModules = [ "ip_set" "ip_set_hash_ip" ];
     loader.grub.enable = true;
   };
 
@@ -231,9 +232,7 @@ services.btblocker.whitelistPorts = [ 22 53 80 443 8080 ];
   # BitTorrent Blocker
   services.btblocker = {
     enable = true;
-    interfaces = [ "enp1s0" ];
-    queueNum = 0;
-    entropyThreshold = 7.6;
+    interface = "enp1s0";
     banDuration = 18000;
     logLevel = "info";
     ipsetName = "torrent_block";
