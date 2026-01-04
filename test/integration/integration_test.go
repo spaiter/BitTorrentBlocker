@@ -405,11 +405,11 @@ func TestDetectionLogging(t *testing.T) {
 	// Create config with detection logging enabled and monitor-only mode
 	config := blocker.Config{
 		Interfaces:       []string{"lo"},
-		IPSetName:        "test_integration",
 		BanDuration:      3600,
 		LogLevel:         "info",
 		DetectionLogPath: logPath,
 		MonitorOnly:      true, // Use monitor mode for testing
+		XDPMode:          "generic",
 	}
 
 	analyzer := blocker.NewAnalyzer(config)
@@ -502,19 +502,19 @@ func TestMonitorOnlyMode(t *testing.T) {
 	// Config with monitor-only mode enabled
 	monitorConfig := blocker.Config{
 		Interfaces:  []string{"lo"},
-		IPSetName:   "test_monitor",
 		BanDuration: 3600,
 		LogLevel:    "info",
 		MonitorOnly: true, // Key: monitor only
+		XDPMode:     "generic",
 	}
 
 	// Config with blocking enabled
 	blockingConfig := blocker.Config{
 		Interfaces:  []string{"lo"},
-		IPSetName:   "test_blocking",
 		BanDuration: 3600,
 		LogLevel:    "info",
 		MonitorOnly: false, // Blocking enabled
+		XDPMode:     "generic",
 	}
 
 	testCases := []struct {
@@ -560,11 +560,11 @@ func TestCombinedMonitorAndLogging(t *testing.T) {
 	// Config with both monitor-only mode AND detection logging
 	config := blocker.Config{
 		Interfaces:       []string{"lo"},
-		IPSetName:        "test_combined",
 		BanDuration:      3600,
 		LogLevel:         "info",
 		DetectionLogPath: logPath,
 		MonitorOnly:      true, // Both features enabled
+		XDPMode:          "generic",
 	}
 
 	if !config.MonitorOnly {
