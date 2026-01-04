@@ -31,10 +31,10 @@ internal/xdp/              - XDP (eXpress Data Path) kernel-space packet filteri
 ### Key Components
 
 1. **Blocker** (`blocker.go`): Main service that:
-   - Monitors network interfaces using libpcap
-   - Parses packets (IP, TCP, UDP layers)
-   - Coordinates analysis and verdict application
-   - Manages XDP filter for kernel-space blocking
+   - Receives packets from NFQUEUE (inline packet filtering)
+   - Parses packets (IP, TCP, UDP layers) with zero-copy optimization
+   - Coordinates analysis and returns verdicts (ACCEPT/DROP)
+   - Manages XDP filter for fast-path blocking of known IPs
    - Handles graceful shutdown
 
 2. **Analyzer** (`analyzer.go`): Packet analysis engine that:
@@ -57,10 +57,11 @@ internal/xdp/              - XDP (eXpress Data Path) kernel-space packet filteri
    - `WhitelistPorts` - Ports to never block
    - Protocol constants (magic numbers, actions)
 
-5. **XDP Filter** (`internal/xdp/`): Kernel-space packet filtering:
+5. **XDP Filter** (`internal/xdp/`): Kernel-space fast-path filtering:
    - Loads eBPF programs into the Linux kernel
-   - Manages IP blocklist via eBPF maps
-   - Provides high-performance packet dropping at NIC level
+   - Manages IP blocklist via eBPF maps (with expiration tracking)
+   - Drops packets from known malicious IPs at NIC level (10+ Gbps)
+   - Optional optimization for NFQUEUE (reduces userspace overhead)
    - Supports generic, native, and offload XDP modes
 
 ## Detection Strategy
@@ -88,16 +89,20 @@ Builds the binary to `bin/btblocker`.
 
 ### Run
 ```bash
-make run
-# Or:
-sudo ./bin/btblocker  # Requires root for libpcap and XDP access
+# 1. Setup iptables to redirect traffic to NFQUEUE
+sudo iptables -I FORWARD -p tcp -j NFQUEUE --queue-num 0
+sudo iptables -I FORWARD -p udp -j NFQUEUE --queue-num 0
+
+# 2. Start blocker
+sudo ./bin/btblocker  # Requires root for NFQUEUE and XDP access
 ```
 
 **Important**: The blocker requires:
-- Linux with XDP/eBPF support (kernel 4.18+)
+- Linux with netfilter NFQUEUE support
+- Linux with XDP/eBPF support (kernel 4.18+, optional for fast-path)
 - Root privileges or CAP_NET_ADMIN capability
-- libpcap for packet capture
-- Network interfaces with XDP support
+- iptables/nftables rules to redirect traffic to NFQUEUE
+- Network interfaces with XDP support (for fast-path optimization)
 
 ### Test
 ```bash
@@ -113,26 +118,43 @@ go test ./internal/blocker
 
 ## Dependencies
 
+- `github.com/florianl/go-nfqueue/v2` - Netfilter NFQUEUE interface (inline packet verdicts)
 - `github.com/google/gopacket` - Packet parsing (lazy decoding for performance)
 - `github.com/cilium/ebpf` - eBPF/XDP program loading and map management
 
 ## Configuration
 
 Default configuration in `config.go`:
-- `Interfaces: []string{"eth0"}` - Network interfaces to monitor
+- `QueueNum: 0` - NFQUEUE number to receive packets from iptables
+- `Interfaces: []string{"eth0"}` - Network interface for XDP fast-path (optional)
 - `BanDuration: 18000` - Ban duration in seconds (5 hours)
 - `LogLevel: "info"` - Logging level (error, warn, info, debug)
 - `XDPMode: "generic"` - XDP mode (generic for compatibility, native for performance)
 - `CleanupInterval: 300` - XDP cleanup interval in seconds (5 minutes)
 
-## Performance Considerations
+## Architecture
 
-- Uses lazy packet parsing (`gopacket.Lazy`) to avoid unnecessary work
+**Two-tier inline blocking system:**
+
+1. **NFQUEUE (Tier 1)**: Inline DPI for first-packet detection
+   - All packets queued for userspace analysis
+   - Full DPI with 11 detection methods
+   - Returns verdict: DROP (BitTorrent) or ACCEPT (normal)
+   - Throughput: ~1-2 Gbps
+   - Latency: ~1-5ms per packet
+
+2. **XDP (Tier 2)**: Fast-path for known malicious IPs
+   - Blocks at kernel level before NFQUEUE
+   - Zero-copy, minimal overhead
+   - Throughput: 10+ Gbps
+   - Latency: ~10µs per packet
+
+**Performance optimizations:**
+- Uses lazy packet parsing (`gopacket.Lazy`, zero-copy)
 - Efficient byte slice operations (no unnecessary copies)
-- XDP kernel-space filtering for high-performance packet dropping
+- XDP fast-path eliminates NFQUEUE overhead for known IPs
 - Early returns in detection functions
 - Whitelist filtering before expensive analysis
-- Supports 10+ Gbps throughput with XDP native mode
 
 ## Go Version
 

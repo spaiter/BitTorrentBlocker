@@ -12,6 +12,7 @@ func TestDefaultConfig(t *testing.T) {
 		got      interface{}
 		expected interface{}
 	}{
+		{"QueueNum", config.QueueNum, 0},
 		{"Interfaces", len(config.Interfaces) == 1 && config.Interfaces[0] == "eth0", true},
 		{"BanDuration", config.BanDuration, 18000},
 		{"LogLevel", config.LogLevel, "info"},
@@ -79,6 +80,7 @@ func TestConfigValidation(t *testing.T) {
 func TestConfigCustomValues(t *testing.T) {
 	// Test that custom config values are properly stored and used
 	config := Config{
+		QueueNum:         5,
 		Interfaces:       []string{"eth0", "wg0"},
 		BanDuration:      86400, // 24 hours
 		LogLevel:         "debug",
@@ -86,6 +88,10 @@ func TestConfigCustomValues(t *testing.T) {
 		MonitorOnly:      true,
 		XDPMode:          "native",
 		CleanupInterval:  600,
+	}
+
+	if config.QueueNum != 5 {
+		t.Errorf("QueueNum = %v, want 5", config.QueueNum)
 	}
 
 	if len(config.Interfaces) != 2 || config.Interfaces[0] != "eth0" || config.Interfaces[1] != "wg0" {

@@ -52,11 +52,16 @@ func main() {
 	config := blocker.DefaultConfig()
 
 	// Override with environment variables if set
+	if queueNum := os.Getenv("QUEUE_NUM"); queueNum != "" {
+		if num, err := strconv.Atoi(queueNum); err == nil && num >= 0 && num <= 65535 {
+			config.QueueNum = num
+		}
+	}
 	if logLevel := os.Getenv("LOG_LEVEL"); logLevel != "" {
 		config.LogLevel = logLevel
 	}
 	if iface := os.Getenv("INTERFACE"); iface != "" {
-		// Support comma-separated list of interfaces
+		// Support comma-separated list of interfaces (used for XDP fast-path)
 		config.Interfaces = []string{}
 		for _, i := range splitAndTrim(iface, ",") {
 			if i != "" {
@@ -90,9 +95,9 @@ func main() {
 	}
 	defer btBlocker.Close()
 
-	log.Println("BitTorrent Blocker (Passive Monitoring) Started...")
-	log.Printf("Configuration: Interfaces=%v, BanDuration=%ds",
-		config.Interfaces, config.BanDuration)
+	log.Println("BitTorrent Blocker (Inline Blocking via NFQUEUE) Starting...")
+	log.Printf("Configuration: NFQUEUE=%d, XDP Interface=%v, BanDuration=%ds",
+		config.QueueNum, config.Interfaces, config.BanDuration)
 
 	// Setup context with cancellation
 	ctx, cancel := context.WithCancel(context.Background())

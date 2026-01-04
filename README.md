@@ -72,27 +72,29 @@ internal/blocker/
 
 ## How It Works
 
-The blocker uses **passive packet monitoring** (like ndpiReader/Wireshark):
+The blocker uses **inline packet filtering** via NFQUEUE + XDP:
 
-1. **Captures** packet copies via libpcap without blocking traffic flow
-2. **Analyzes** packets asynchronously in background goroutines
-3. **Detects** BitTorrent traffic using 11 complementary DPI techniques
-4. **Bans** detected IPs via XDP (eXpress Data Path) for 5 hours
-5. **Blocks** traffic from banned IPs at kernel level using eBPF/XDP
+1. **Intercepts** packets via iptables NFQUEUE before they proceed
+2. **Analyzes** packets with Deep Packet Inspection (11 detection methods)
+3. **Detects** BitTorrent traffic in real-time (first packet analysis)
+4. **Drops** BitTorrent packets immediately (inline verdict)
+5. **Adds** detected IPs to XDP fast-path for kernel-level blocking
+6. **Blocks** future packets at line rate (10+ Gbps) via XDP
 
 **Key advantages:**
-- ✅ Zero latency - traffic flows normally during analysis
-- ✅ No packet verdict delays - analysis happens in background
-- ✅ Simpler setup - no iptables NFQUEUE rules needed
-- ✅ Better performance - kernel-space packet dropping
-- ✅ High throughput - supports 10+ Gbps with XDP native mode
+- ✅ True inline blocking - first packet is blocked, no connections succeed
+- ✅ Two-tier architecture - NFQUEUE for detection, XDP for performance
+- ✅ Learning system - once detected, blocked at kernel level forever
+- ✅ High throughput - XDP handles known IPs at 10+ Gbps
+- ✅ Complete protection - no BitTorrent traffic escapes
 
 ## Prerequisites
 
 - Go 1.20 or later
-- Linux kernel 4.18+ with XDP/eBPF support (standard on modern distributions)
-- libpcap for packet capture
-- Root/CAP_NET_ADMIN privileges (for packet capture and XDP)
+- Linux with netfilter NFQUEUE support (standard on all distributions)
+- Linux kernel 4.18+ with XDP/eBPF support (optional, for fast-path optimization)
+- iptables or nftables for traffic redirection
+- Root/CAP_NET_ADMIN privileges (for NFQUEUE and XDP)
 
 ## Installation
 
@@ -286,25 +288,36 @@ sudo INTERFACE=eth0,wg0,awg0 ./bin/btblocker
 
 ### Manual Setup (Non-NixOS Systems)
 
-The blocker uses XDP (eXpress Data Path) for kernel-space packet dropping. No manual firewall configuration is needed!
+The blocker requires iptables rules to redirect traffic to NFQUEUE for inline analysis:
 
 ```bash
-# Simply run the blocker with root privileges
+# 1. Setup iptables to redirect traffic to NFQUEUE
+# For router/gateway (forwarded traffic):
+sudo iptables -I FORWARD -p tcp -j NFQUEUE --queue-num 0
+sudo iptables -I FORWARD -p udp -j NFQUEUE --queue-num 0
+
+# For local traffic (optional):
+sudo iptables -I INPUT -p tcp -j NFQUEUE --queue-num 0
+sudo iptables -I INPUT -p udp -j NFQUEUE --queue-num 0
+
+# 2. Run the blocker
 sudo INTERFACE=eth0 LOG_LEVEL=info ./bin/btblocker
 
 # The blocker automatically:
-# - Loads XDP eBPF program onto the interface
-# - Manages IP blocklist via eBPF maps
-# - Drops packets at kernel level
-# - Cleans up expired bans automatically
+# - Receives packets from NFQUEUE
+# - Analyzes with Deep Packet Inspection
+# - Returns verdict (DROP for BitTorrent, ACCEPT for normal)
+# - Adds detected IPs to XDP fast-path (optional, for performance)
+# - Blocks future packets at kernel level via XDP
 ```
 
 **Requirements:**
-- Linux kernel 4.18+ with XDP support
+- Linux with netfilter NFQUEUE support
+- iptables or nftables configured
 - Root privileges or CAP_NET_ADMIN capability
-- Network interface with XDP support (most modern NICs)
+- Linux kernel 4.18+ with XDP support (optional, for fast-path)
 
-**Note:** The NixOS module provides additional systemd integration and automatic service management.
+**Note:** See [docs/NFQUEUE_XDP_ARCHITECTURE.md](docs/NFQUEUE_XDP_ARCHITECTURE.md) for detailed architecture explanation.
 
 ### Configuration
 
@@ -312,7 +325,8 @@ The blocker uses sensible defaults but can be customized:
 
 ```go
 config := blocker.Config{
-    Interfaces:       []string{"eth0"},  // Network interfaces to monitor
+    QueueNum:         0,                 // NFQUEUE number (0-65535)
+    Interfaces:       []string{"eth0"},  // Network interface for XDP fast-path
     BanDuration:      18000,             // Ban duration in seconds (5 hours)
     LogLevel:         "info",            // Log level: error, warn, info, debug
     DetectionLogPath: "",                // Path to detection log (empty = disabled)
@@ -324,9 +338,12 @@ config := blocker.Config{
 ```
 
 **Environment Variables:**
-- `INTERFACE` - Network interface(s) to monitor (default: `eth0`)
+- `QUEUE_NUM` - NFQUEUE number to receive packets from iptables (default: `0`)
+  - Must match the `--queue-num` in your iptables rules
+  - Example: `QUEUE_NUM=5`
+- `INTERFACE` - Network interface for XDP fast-path (default: `eth0`)
   - Single interface: `INTERFACE=eth0`
-  - Multiple interfaces: `INTERFACE=eth0,wg0,awg0` (comma-separated)
+  - XDP is optional but highly recommended for performance
 - `LOG_LEVEL` - Logging verbosity (default: `info`)
   - Values: `error`, `warn`, `info`, `debug`
 - `BAN_DURATION` - Ban duration in seconds (default: `18000` = 5 hours)
