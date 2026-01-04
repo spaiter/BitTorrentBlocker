@@ -185,13 +185,22 @@ Add BitTorrentBlocker to your system flake and import the module:
             enable = true;
             interface = "eth0";  # Single interface
             # or multiple interfaces: "eth0,wg0,awg0" (comma-separated)
-            logLevel = "info";
 
-            # Optional: customize settings
-            banDuration = 18000;      # 5 hours (default)
-            xdpMode = "generic";      # XDP mode: "generic" (compatible) or "native" (fast)
-            cleanupInterval = 300;    # XDP cleanup interval in seconds
-            monitorOnly = false;      # Set true to monitor without blocking
+            # NFQUEUE configuration (required for inline DPI)
+            queueNum = 0;                     # NFQUEUE number (0-65535)
+            chains = [ "FORWARD" ];           # iptables chains: INPUT/FORWARD/OUTPUT
+                                              # FORWARD = router/VPN mode (most common)
+                                              # INPUT = local traffic
+                                              # Can use multiple: [ "INPUT" "FORWARD" ]
+
+            # Logging and monitoring
+            logLevel = "info";                # error/warn/info/debug
+            monitorOnly = false;              # Set true to monitor without blocking
+
+            # Optional: performance tuning
+            banDuration = 18000;              # 5 hours (default)
+            xdpMode = "generic";              # XDP mode: "generic" (compatible) or "native" (fast)
+            cleanupInterval = 300;            # XDP cleanup interval in seconds
           };
         }
       ];
@@ -222,14 +231,15 @@ sudo bpftool map dump name blocked_ips 2>/dev/null || echo "Install bpftool to v
 #### What the Module Does Automatically
 
 - ✅ **Installs btblocker binary** from Cachix (instant, pre-built)
-- ✅ **Creates systemd service** with CAP_NET_ADMIN capability
+- ✅ **Configures iptables/nftables** - Automatically adds NFQUEUE rules to redirect traffic for DPI
+- ✅ **Creates systemd service** with CAP_NET_ADMIN and CAP_NET_RAW capabilities
 - ✅ **Loads XDP programs** automatically on service start
-- ✅ **Manages eBPF maps** for IP blocklist
-- ✅ **Verifies kernel XDP support** (Linux 4.18+)
-- ✅ **Handles all environment variables** automatically
-- ✅ **Cleans up XDP on stop** (unloads eBPF programs and clears blocklist)
+- ✅ **Manages eBPF maps** for IP blocklist with expiration tracking
+- ✅ **Verifies kernel support** - Checks Linux 4.18+ for XDP and NFQUEUE availability
+- ✅ **Handles all environment variables** - QUEUE_NUM, INTERFACE, XDP_MODE, etc.
+- ✅ **Cleans up on stop** - Removes iptables rules, unloads eBPF programs, clears blocklist
 
-**No manual configuration needed!** Just enable the service and set your interface.
+**No manual iptables or systemd configuration needed!** The module handles the complete setup.
 
 #### Binary Cache
 
