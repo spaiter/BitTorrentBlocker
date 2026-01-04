@@ -70,6 +70,25 @@ in {
       description = "Logging level (error, warn, info, debug)";
     };
 
+    detectionLogPath = mkOption {
+      type = types.str;
+      default = "";
+      description = ''
+        Path to detection log file for detailed packet analysis (empty = disabled).
+        Logs include timestamp, IP, protocol, detection method, and payload hex dump.
+        Useful for false positive analysis and debugging.
+      '';
+    };
+
+    monitorOnly = mkOption {
+      type = types.bool;
+      default = false;
+      description = ''
+        If true, only log detections without banning IPs.
+        Perfect for testing and validation before enabling blocking.
+      '';
+    };
+
     firewallBackend = mkOption {
       type = types.enum [ "nftables" "iptables" ];
       default = "nftables";
@@ -115,7 +134,8 @@ in {
           "INTERFACE=${cfg.interface}"
           "BAN_DURATION=${toString cfg.banDuration}"
           "PATH=${pkgs.lib.makeBinPath ([ pkgs.ipset ] ++ (if cfg.firewallBackend == "nftables" then [ pkgs.nftables ] else [ pkgs.iptables ]))}"
-        ];
+        ] ++ (if cfg.detectionLogPath != "" then [ "DETECTION_LOG=${cfg.detectionLogPath}" ] else [])
+          ++ (if cfg.monitorOnly then [ "MONITOR_ONLY=true" ] else []);
 
         # Security hardening
         NoNewPrivileges = false; # Required for CAP_NET_ADMIN

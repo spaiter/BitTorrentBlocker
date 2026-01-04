@@ -315,11 +315,12 @@ The blocker uses sensible defaults but can be customized:
 ```go
 config := blocker.Config{
     Interfaces:       []string{"eth0"},  // Network interfaces to monitor
-    EntropyThreshold: 7.6,               // Entropy threshold for encrypted traffic
-    MinPayloadSize:   60,                // Minimum payload size for analysis
-    IPSetName:        "torrent_block",
-    BanDuration:      18000,             // 5 hours in seconds
+    IPSetName:        "torrent_block",   // ipset name for banned IPs
+    BanDuration:      18000,             // Ban duration in seconds (5 hours)
     LogLevel:         "info",            // Log level: error, warn, info, debug
+    DetectionLogPath: "",                // Path to detection log (empty = disabled)
+    MonitorOnly:      false,             // If true, only log without banning
+    BlockSOCKS:       false,             // If true, block SOCKS proxy connections
 }
 ```
 
@@ -328,9 +329,15 @@ config := blocker.Config{
   - Single interface: `INTERFACE=eth0`
   - Multiple interfaces: `INTERFACE=eth0,wg0,awg0` (comma-separated)
 - `LOG_LEVEL` - Logging verbosity (default: `info`)
+  - Values: `error`, `warn`, `info`, `debug`
 - `BAN_DURATION` - Ban duration in seconds (default: `18000` = 5 hours)
-- `DETECTION_LOG` - Path to detection log file for false positive analysis (default: disabled)
+- `DETECTION_LOG` - Path to detection log file for detailed packet analysis (default: disabled)
+  - Logs include timestamp, IP, protocol, detection method, and payload hex dump
+  - Useful for false positive analysis and debugging
 - `MONITOR_ONLY` - If set to `true` or `1`, only log detections without banning IPs (default: `false`)
+  - Perfect for testing and validation before enabling blocking
+- `BLOCK_SOCKS` - If set to `true` or `1`, block SOCKS proxy connections (default: `false`)
+  - Disabled by default to avoid false positives with legitimate proxy services
 
 **Log Levels:**
 - `error` - Only critical errors
@@ -705,6 +712,24 @@ services.btblocker = {
   interface = "wg0";
   cleanupOnStop = true;  # Banned IPs cleared on service stop
 };
+
+# Example 5: Monitor-only mode with detection logging (testing)
+services.btblocker = {
+  enable = true;
+  interface = "eth0";
+  monitorOnly = true;                                    # Only log, don't ban
+  detectionLogPath = "/var/log/btblocker/detections.log";  # Detailed packet logs
+  logLevel = "debug";
+};
+
+# Example 6: Production with detection logging (audit trail)
+services.btblocker = {
+  enable = true;
+  interface = "eth0,wg0";
+  banDuration = 18000;  # 5 hours
+  detectionLogPath = "/var/log/btblocker/detections.log";  # Keep audit trail
+  logLevel = "info";
+};
 ```
 
 **After configuration:**
@@ -991,11 +1016,12 @@ services.btblocker = {
 
 **Configuration**:
 ```bash
-# Monitor multiple VLANs
+# Monitor multiple VLANs with detection logging
 INTERFACE=eth0,eth1,eth2 \
 LOG_LEVEL=info \
 BAN_DURATION=86400 \
-./btblocker  # 24-hour ban
+DETECTION_LOG=/var/log/btblocker/detections.log \
+./btblocker  # 24-hour ban with audit trail
 ```
 
 **Result**:
@@ -1028,8 +1054,8 @@ services.btblocker = {
 **Scenario**: Home server owner preventing family members from torrenting on shared connection.
 
 **Configuration**:
-```bash
-# Docker Compose
+```yaml
+# docker-compose.yml
 services:
   btblocker:
     image: ghcr.io/spaiter/btblocker:latest
@@ -1038,8 +1064,11 @@ services:
     network_mode: host
     environment:
       - INTERFACE=eth0
-      - BAN_DURATION=1800  # 30 minutes
+      - BAN_DURATION=1800         # 30 minutes
       - LOG_LEVEL=info
+      - DETECTION_LOG=/var/log/btblocker/detections.log  # Optional: detailed logging
+    volumes:
+      - ./logs:/var/log/btblocker  # Optional: persist detection logs
     restart: unless-stopped
 ```
 
