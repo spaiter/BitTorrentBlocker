@@ -27,15 +27,23 @@ The XDP layer provides fast kernel-space packet filtering by maintaining a block
 
 ## Building
 
-### Prerequisites
+### Prerequisites (Runtime)
 
 - Linux kernel 4.18+ with XDP support
-- clang/LLVM for eBPF compilation
 - Go 1.20+
 
 ### Generate Go Bindings
 
-On Linux, run:
+#### Recommended: Using Docker (Any Platform)
+```bash
+# From project root (works on Windows, macOS, Linux)
+make generate-ebpf-docker
+```
+
+This generates the Go bindings without needing a local Linux environment!
+
+#### Alternative: Native Linux
+On Linux with clang installed:
 ```bash
 go generate ./internal/xdp
 ```
@@ -50,6 +58,10 @@ This will:
 ```bash
 make build
 ```
+
+### Kernel Compatibility
+
+The generated eBPF bytecode is **portable across kernel versions** (4.18+). Generate once with Docker, deploy anywhere!
 
 ## Usage
 

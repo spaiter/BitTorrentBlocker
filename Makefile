@@ -1,9 +1,15 @@
-.PHONY: build run test generate-ebpf clean
+.PHONY: build run test generate-ebpf generate-ebpf-docker clean
 
 # Generate eBPF bytecode from C source (requires Linux with clang)
 generate-ebpf:
 	@echo "Generating eBPF bytecode (requires Linux with clang)..."
 	go generate ./internal/xdp
+
+# Generate eBPF bytecode using Docker (works on any platform)
+generate-ebpf-docker:
+	@echo "Generating eBPF bytecode using Docker..."
+	docker build -f Dockerfile.ebpf-gen -t btblocker-ebpf-gen .
+	docker run --rm -v "$(PWD):/src" btblocker-ebpf-gen
 
 build:
 	go build -o bin/btblocker ./cmd/btblocker
