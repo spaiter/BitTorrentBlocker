@@ -291,9 +291,11 @@ program xdp_blocker: map blocked_ips: map create: operation not permitted
 (MEMLOCK may be too low, consider rlimit.RemoveMemlock)
 ```
 
-**Cause**: eBPF programs require unlimited memory locking to create kernel maps. The default systemd `RLIMIT_MEMLOCK` is too restrictive.
+**Cause**: eBPF programs require:
+1. Unlimited memory locking (`RLIMIT_MEMLOCK`) to create kernel maps
+2. `CAP_BPF` capability (Linux 5.8+) or `CAP_SYS_ADMIN` (older kernels) to load eBPF programs
 
-**Solution**: The NixOS module automatically sets `LimitMEMLOCK = "infinity"` in the systemd service (as of commit 318f805). If you're still seeing this error:
+**Solution**: The NixOS module automatically configures both requirements (as of commit c86d73a). If you're still seeing this error:
 
 1. **Update to the latest module**:
    ```bash
@@ -306,15 +308,22 @@ program xdp_blocker: map blocked_ips: map create: operation not permitted
 
 2. **Verify the fix is applied**:
    ```bash
-   # Check systemd service configuration
+   # Check MEMLOCK limit
    systemctl show btblocker | grep LimitMEMLOCK
    # Should output: LimitMEMLOCK=infinity
+
+   # Check capabilities
+   systemctl show btblocker | grep CapabilityBoundingSet
+   # Should include: CAP_NET_ADMIN CAP_NET_RAW CAP_BPF CAP_SYS_ADMIN
    ```
 
-3. **If using an older version** (before commit 318f805), manually add to your configuration:
+3. **If using an older version** (before commit c86d73a), manually add to your configuration:
    ```nix
    systemd.services.btblocker.serviceConfig = {
      LimitMEMLOCK = "infinity";
+     AmbientCapabilities = [ "CAP_NET_ADMIN" "CAP_NET_RAW" "CAP_BPF" "CAP_SYS_ADMIN" ];
+     CapabilityBoundingSet = [ "CAP_NET_ADMIN" "CAP_NET_RAW" "CAP_BPF" "CAP_SYS_ADMIN" ];
+     ProtectKernelModules = false;
    };
    ```
 
