@@ -1,10 +1,50 @@
 # NixOS Deployment Guide
 
-This guide explains how to deploy the BitTorrent Blocker on your NixOS server.
+Complete guide for deploying BitTorrent Blocker on NixOS using the official NixOS module.
 
-## Quick Start
+## Installation Methods
 
-### 1. Add the NixOS Module
+### Method 1: Using Flakes (Recommended)
+
+**Step 1**: Create or edit `/etc/nixos/flake.nix`:
+
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    btblocker.url = "github:spaiter/BitTorrentBlocker";
+  };
+
+  outputs = { nixpkgs, btblocker, ... }: {
+    nixosConfigurations.yourhostname = nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      modules = [
+        ./configuration.nix
+        btblocker.nixosModules.default
+      ];
+    };
+  };
+}
+```
+
+**Step 2**: Enable in `/etc/nixos/configuration.nix`:
+
+```nix
+{
+  services.btblocker = {
+    enable = true;
+    interface = "eth0";  # Your network interface
+  };
+}
+```
+
+**Step 3**: Deploy:
+
+```bash
+sudo nixos-rebuild switch --flake /etc/nixos#yourhostname
+```
+
+### Method 2: Direct Module Import
 
 Add the module to your NixOS configuration:
 
@@ -31,13 +71,13 @@ Add the module to your NixOS configuration:
 }
 ```
 
-### 2. Rebuild Your System
+Rebuild your system:
 
 ```bash
 sudo nixos-rebuild switch
 ```
 
-### 3. Verify It's Running
+## Verify Installation
 
 ```bash
 # Check service status
