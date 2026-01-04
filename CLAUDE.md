@@ -21,16 +21,20 @@ internal/blocker/          - Core blocker library (internal = not importable by 
   ├── analyzer.go         - Packet analysis engine (coordinates detection methods)
   ├── detectors.go        - Protocol detection functions (actual DPI logic)
   ├── signatures.go       - Signature databases (protocol patterns, magic numbers)
-  ├── ipban.go           - IP banning with caching (integrates with Linux ipset)
-  └── config.go          - Configuration management
+  ├── logger.go           - Logging with level support
+  └── config.go           - Configuration management
+internal/xdp/              - XDP (eXpress Data Path) kernel-space packet filtering
+  ├── loader.go           - XDP program loader and manager
+  └── map.go              - eBPF map manager for IP blocklist
 ```
 
 ### Key Components
 
 1. **Blocker** (`blocker.go`): Main service that:
-   - Manages nfqueue connection
+   - Monitors network interfaces using libpcap
    - Parses packets (IP, TCP, UDP layers)
    - Coordinates analysis and verdict application
+   - Manages XDP filter for kernel-space blocking
    - Handles graceful shutdown
 
 2. **Analyzer** (`analyzer.go`): Packet analysis engine that:
@@ -53,9 +57,11 @@ internal/blocker/          - Core blocker library (internal = not importable by 
    - `WhitelistPorts` - Ports to never block
    - Protocol constants (magic numbers, actions)
 
-5. **IPBanManager** (`ipban.go`): Manages IP blocking:
-   - Caches recent bans to avoid duplicate ipset calls
-   - Integrates with Linux ipset for persistent blocking
+5. **XDP Filter** (`internal/xdp/`): Kernel-space packet filtering:
+   - Loads eBPF programs into the Linux kernel
+   - Manages IP blocklist via eBPF maps
+   - Provides high-performance packet dropping at NIC level
+   - Supports generic, native, and offload XDP modes
 
 ## Detection Strategy
 
@@ -84,14 +90,14 @@ Builds the binary to `bin/btblocker`.
 ```bash
 make run
 # Or:
-sudo ./bin/btblocker  # Requires root for nfqueue access
+sudo ./bin/btblocker  # Requires root for libpcap and XDP access
 ```
 
 **Important**: The blocker requires:
-- Linux with netfilter/nfqueue support
+- Linux with XDP/eBPF support (kernel 4.18+)
 - Root privileges or CAP_NET_ADMIN capability
-- iptables rules to redirect traffic to nfqueue
-- ipset utility for IP banning
+- libpcap for packet capture
+- Network interfaces with XDP support
 
 ### Test
 ```bash
@@ -107,25 +113,26 @@ go test ./internal/blocker
 
 ## Dependencies
 
-- `github.com/florianl/go-nfqueue` - Netfilter queue interface
 - `github.com/google/gopacket` - Packet parsing (lazy decoding for performance)
+- `github.com/cilium/ebpf` - eBPF/XDP program loading and map management
 
 ## Configuration
 
 Default configuration in `config.go`:
-- `QueueNum: 0` - NFQUEUE number to listen on
-- `EntropyThreshold: 7.6` - Shannon entropy threshold for encrypted traffic
-- `MinPayloadSize: 60` - Minimum payload size for entropy analysis
-- `IPSetName: "torrent_block"` - ipset name for banned IPs
-- `BanDuration: "18000"` - 5 hours ban duration (seconds)
+- `Interfaces: []string{"eth0"}` - Network interfaces to monitor
+- `BanDuration: 18000` - Ban duration in seconds (5 hours)
+- `LogLevel: "info"` - Logging level (error, warn, info, debug)
+- `XDPMode: "generic"` - XDP mode (generic for compatibility, native for performance)
+- `CleanupInterval: 300` - XDP cleanup interval in seconds (5 minutes)
 
 ## Performance Considerations
 
 - Uses lazy packet parsing (`gopacket.Lazy`) to avoid unnecessary work
 - Efficient byte slice operations (no unnecessary copies)
-- Cached IP banning to avoid repeated system calls
+- XDP kernel-space filtering for high-performance packet dropping
 - Early returns in detection functions
 - Whitelist filtering before expensive analysis
+- Supports 10+ Gbps throughput with XDP native mode
 
 ## Go Version
 

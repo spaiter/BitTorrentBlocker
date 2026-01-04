@@ -54,7 +54,7 @@ The tool provides **defense-in-depth** - even if users don't intend to violate p
   - Encrypted/obfuscated traffic via entropy analysis
 - **Extensive Signature Database**: 95+ protocol signatures, 60+ client identifiers
 - **SOCKS5 Unwrapping**: Detects BitTorrent traffic tunneled through SOCKS proxies
-- **Automatic IP Banning**: Integrates with Linux ipset for persistent blocking
+- **Automatic IP Banning**: Uses XDP (eXpress Data Path) for kernel-space blocking
 - **Whitelist Support**: Excludes common ports (HTTP, HTTPS, SSH, DNS)
 
 ## Architecture
@@ -77,22 +77,22 @@ The blocker uses **passive packet monitoring** (like ndpiReader/Wireshark):
 1. **Captures** packet copies via libpcap without blocking traffic flow
 2. **Analyzes** packets asynchronously in background goroutines
 3. **Detects** BitTorrent traffic using 11 complementary DPI techniques
-4. **Bans** detected IPs via Linux ipset for 5 hours
-5. **Blocks** traffic from banned IPs using pre-configured nftables/iptables rules
+4. **Bans** detected IPs via XDP (eXpress Data Path) for 5 hours
+5. **Blocks** traffic from banned IPs at kernel level using eBPF/XDP
 
 **Key advantages:**
 - ✅ Zero latency - traffic flows normally during analysis
 - ✅ No packet verdict delays - analysis happens in background
 - ✅ Simpler setup - no iptables NFQUEUE rules needed
-- ✅ Better performance - asynchronous processing
+- ✅ Better performance - kernel-space packet dropping
+- ✅ High throughput - supports 10+ Gbps with XDP native mode
 
 ## Prerequisites
 
 - Go 1.20 or later
-- Linux with libpcap support (standard on most distributions)
-- ipset utility (for IP banning)
-- nftables or iptables (for DROP rules)
-- Root/CAP_NET_ADMIN privileges (for packet capture and ipset)
+- Linux kernel 4.18+ with XDP/eBPF support (standard on modern distributions)
+- libpcap for packet capture
+- Root/CAP_NET_ADMIN privileges (for packet capture and XDP)
 
 ## Installation
 
@@ -144,7 +144,7 @@ docker compose up -d
 
 ### NixOS / Nix (Recommended for NixOS users)
 
-The blocker includes a **complete NixOS module** that handles all configuration automatically. No need to manually configure systemd services, ipset, or firewall rules!
+The blocker includes a **complete NixOS module** that handles all configuration automatically. No need to manually configure systemd services or XDP - everything is managed automatically!
 
 #### Quick Start with Flakes
 
@@ -186,9 +186,10 @@ Add BitTorrentBlocker to your system flake and import the module:
             logLevel = "info";
 
             # Optional: customize settings
-            banDuration = 18000;          # 5 hours (default)
-            firewallBackend = "nftables";  # or "iptables"
-            cleanupOnStop = false;        # keep banned IPs on stop
+            banDuration = 18000;      # 5 hours (default)
+            xdpMode = "generic";      # XDP mode: "generic" (compatible) or "native" (fast)
+            cleanupInterval = 300;    # XDP cleanup interval in seconds
+            monitorOnly = false;      # Set true to monitor without blocking
           };
         }
       ];
@@ -211,19 +212,20 @@ sudo systemctl status btblocker
 # View logs
 sudo journalctl -u btblocker -f
 
-# Check banned IPs
-sudo ipset list torrent_block
+# Check banned IPs (XDP map introspection)
+# Note: XDP maps require bpftool or similar for inspection
+sudo bpftool map dump name blocked_ips 2>/dev/null || echo "Install bpftool to view XDP maps"
 ```
 
 #### What the Module Does Automatically
 
 - ✅ **Installs btblocker binary** from Cachix (instant, pre-built)
 - ✅ **Creates systemd service** with CAP_NET_ADMIN capability
-- ✅ **Sets up ipset** (destroyed and recreated on each start for clean state)
-- ✅ **Configures firewall rules** (nftables or iptables, your choice)
-- ✅ **Loads kernel modules** (ip_set, ip_set_hash_ip)
+- ✅ **Loads XDP programs** automatically on service start
+- ✅ **Manages eBPF maps** for IP blocklist
+- ✅ **Verifies kernel XDP support** (Linux 4.18+)
 - ✅ **Handles all environment variables** automatically
-- ✅ **Cleans up on stop** (removes firewall rules, optionally destroys ipset)
+- ✅ **Cleans up XDP on stop** (unloads eBPF programs and clears blocklist)
 
 **No manual configuration needed!** Just enable the service and set your interface.
 
@@ -282,31 +284,27 @@ sudo INTERFACE=eth0,wg0,awg0 ./bin/btblocker
 # 3. Include interface name in all log messages
 ```
 
-### Manual Setup (if not using NixOS module)
+### Manual Setup (Non-NixOS Systems)
 
-Before running the blocker, set up ipset and firewall rules:
+The blocker uses XDP (eXpress Data Path) for kernel-space packet dropping. No manual firewall configuration is needed!
 
 ```bash
-# 1. Create ipset for banned IPs (5-hour timeout)
-sudo ipset create torrent_block hash:ip timeout 18000
-
-# 2. Configure firewall to DROP traffic from banned IPs
-# Using nftables (recommended):
-sudo nft add table inet btblocker
-sudo nft add chain inet btblocker input { type filter hook input priority 0 \; policy accept \; }
-sudo nft add chain inet btblocker forward { type filter hook forward priority 0 \; policy accept \; }
-sudo nft add rule inet btblocker input ip saddr @torrent_block drop
-sudo nft add rule inet btblocker forward ip saddr @torrent_block drop
-
-# OR using iptables (alternative):
-sudo iptables -I INPUT -m set --match-set torrent_block src -j DROP
-sudo iptables -I FORWARD -m set --match-set torrent_block src -j DROP
-
-# 3. Run the blocker
+# Simply run the blocker with root privileges
 sudo INTERFACE=eth0 LOG_LEVEL=info ./bin/btblocker
+
+# The blocker automatically:
+# - Loads XDP eBPF program onto the interface
+# - Manages IP blocklist via eBPF maps
+# - Drops packets at kernel level
+# - Cleans up expired bans automatically
 ```
 
-**Note:** The NixOS module handles all of this automatically.
+**Requirements:**
+- Linux kernel 4.18+ with XDP support
+- Root privileges or CAP_NET_ADMIN capability
+- Network interface with XDP support (most modern NICs)
+
+**Note:** The NixOS module provides additional systemd integration and automatic service management.
 
 ### Configuration
 
@@ -315,12 +313,13 @@ The blocker uses sensible defaults but can be customized:
 ```go
 config := blocker.Config{
     Interfaces:       []string{"eth0"},  // Network interfaces to monitor
-    IPSetName:        "torrent_block",   // ipset name for banned IPs
     BanDuration:      18000,             // Ban duration in seconds (5 hours)
     LogLevel:         "info",            // Log level: error, warn, info, debug
     DetectionLogPath: "",                // Path to detection log (empty = disabled)
     MonitorOnly:      false,             // If true, only log without banning
     BlockSOCKS:       false,             // If true, block SOCKS proxy connections
+    XDPMode:          "generic",         // XDP mode: "generic" or "native"
+    CleanupInterval:  300,               // XDP cleanup interval in seconds
 }
 ```
 
@@ -379,7 +378,7 @@ In this mode:
 - ✅ All detections are logged normally
 - ✅ Detection log is written with full packet details
 - ✅ Console shows "[DETECT] ... - Monitor only (no ban)"
-- ❌ No IPs are added to ipset
+- ❌ No IPs are added to XDP blocklist
 - ❌ No traffic is blocked
 
 This is ideal for:
@@ -607,13 +606,12 @@ The project includes a complete NixOS module for production deployment with auto
           services.btblocker = {
             enable = true;
             interface = "eth0";                # Single or multiple interfaces (comma-separated: "eth0,wg0,awg0")
-            ipsetName = "torrent_block";       # Name of ipset for banned IPs
             banDuration = 18000;               # Ban duration in seconds (5 hours)
             logLevel = "info";                 # Log level: error, warn, info, debug
             detectionLogPath = "";             # Path to detection log file (empty = disabled)
             monitorOnly = false;               # If true, only log without banning
-            firewallBackend = "nftables";      # Firewall backend: nftables or iptables
-            cleanupOnStop = false;             # Keep banned IPs when service stops
+            xdpMode = "generic";               # XDP mode: "generic" (compatible) or "native" (fast)
+            cleanupInterval = 300;             # XDP cleanup interval in seconds (5 minutes)
             whitelistPorts = [ 22 53 80 443 ]; # Ports to never block
           };
         }
@@ -659,10 +657,10 @@ in
 **What gets configured automatically:**
 - ✅ Binary installed from Cachix cache (instant installation)
 - ✅ Systemd service with CAP_NET_ADMIN capability
-- ✅ ipset created and destroyed on service start for clean state
-- ✅ Firewall rules (nftables or iptables) for dropping banned IPs
+- ✅ XDP eBPF programs loaded on service start
+- ✅ eBPF maps for IP blocklist management
 - ✅ Automatic service restart on failure
-- ✅ Kernel modules loaded (ip_set, ip_set_hash_ip)
+- ✅ XDP cleanup on service stop
 
 **Configuration Options:**
 
@@ -670,18 +668,18 @@ in
 |--------|------|---------|-------------|
 | `enable` | bool | `false` | Enable the btblocker service |
 | `interface` | string | `"eth0"` | Network interface(s) to monitor (comma-separated for multiple: `"eth0,wg0,awg0"`) |
-| `ipsetName` | string | `"torrent_block"` | Name of ipset for banned IPs |
 | `banDuration` | int | `18000` | Ban duration in seconds (default: 5 hours) |
 | `logLevel` | enum | `"info"` | Log level: `error`, `warn`, `info`, `debug` |
 | `detectionLogPath` | string | `""` | Path to detection log file for detailed packet analysis (empty = disabled) |
 | `monitorOnly` | bool | `false` | If true, only log detections without banning IPs (perfect for testing) |
-| `firewallBackend` | enum | `"nftables"` | Firewall backend: `nftables` or `iptables` |
-| `cleanupOnStop` | bool | `false` | Destroy ipset and clear banned IPs when service stops |
+| `xdpMode` | enum | `"generic"` | XDP mode: `generic` (compatible), `native` (fast), `offload` (NIC hardware) |
+| `cleanupInterval` | int | `300` | XDP cleanup interval in seconds (removes expired bans) |
 | `whitelistPorts` | list | `[22, 53, 80, 443, 853, 5222, 5269]` | Ports to never block |
 
-**Firewall Backend Selection:**
-- `nftables` (default, recommended) - Modern Linux firewall
-- `iptables` - Legacy firewall (use if nftables unavailable)
+**XDP Mode Selection:**
+- `generic` (default, recommended) - Software XDP, works on any interface
+- `native` - Driver XDP, requires NIC driver support, highest performance
+- `offload` - Hardware XDP, requires SmartNIC, offloads to NIC hardware
 
 **Examples:**
 
@@ -701,18 +699,18 @@ services.btblocker = {
   logLevel = "info";
 };
 
-# Example 3: Using iptables backend instead of nftables
+# Example 3: High-performance mode with native XDP
 services.btblocker = {
   enable = true;
   interface = "eth0";
-  firewallBackend = "iptables";
+  xdpMode = "native";  # Requires NIC driver support
 };
 
-# Example 4: Clean up banned IPs when service stops
+# Example 4: Custom cleanup interval (check every 10 minutes)
 services.btblocker = {
   enable = true;
   interface = "wg0";
-  cleanupOnStop = true;  # Banned IPs cleared on service stop
+  cleanupInterval = 600;  # 10 minutes
 };
 
 # Example 5: Monitor-only mode with detection logging (testing)
@@ -745,8 +743,9 @@ sudo systemctl status btblocker
 # View logs
 sudo journalctl -u btblocker -f
 
-# Check banned IPs
-sudo ipset list torrent_block
+# Check banned IPs (XDP map introspection)
+# Note: XDP maps require bpftool or similar for inspection
+sudo bpftool map dump name blocked_ips 2>/dev/null || echo "Install bpftool to view XDP maps"
 ```
 
 ## Detection Accuracy
@@ -982,10 +981,10 @@ The BitTorrent Blocker is designed for **production server environments** with e
                        │   └─► btblocker (DPI Analysis)
                        │       ├─► Goroutine per Interface
                        │       ├─► Goroutine per Packet
-                       │       └─► ipset (Ban Detected IPs)
+                       │       └─► XDP/eBPF (Ban Detected IPs)
                        │
-                       └─► nftables/iptables Rules
-                           └─► DROP traffic from ipset
+                       └─► XDP (eXpress Data Path)
+                           └─► DROP packets at kernel level
 ```
 
 ### Deployment Scenarios
@@ -1002,7 +1001,7 @@ services.btblocker = {
   interface = "wg0";              # WireGuard interface
   banDuration = 18000;            # 5 hours
   logLevel = "info";
-  firewallBackend = "nftables";
+  xdpMode = "generic";  # XDP mode
 };
 ```
 
@@ -1042,7 +1041,7 @@ services.btblocker = {
   interface = "eth0";
   banDuration = 3600;             # 1 hour warning
   logLevel = "debug";             # Audit trail
-  firewallBackend = "nftables";
+  xdpMode = "generic";  # XDP mode
 };
 ```
 
@@ -1089,9 +1088,9 @@ For mission-critical environments:
 # Server 1: Primary blocker
 services.btblocker.enable = true;
 
-# Server 2: Standby (shared ipset via network)
-# Use ipset with netlink synchronization
-# Or centralized ban list distribution
+# Server 2: Standby (shared XDP maps via network)
+# Use eBPF map synchronization
+# Or centralized ban list distribution via API
 ```
 
 #### Monitoring & Alerting
@@ -1150,8 +1149,8 @@ BAN_DURATION=18000 ./btblocker
 BAN_DURATION=86400 ./btblocker
 
 # Permanent blocking (no timeout)
-# Create ipset without timeout, manage manually
-ipset create torrent_block hash:ip
+# Set a very long ban duration (e.g., 1 year)
+BAN_DURATION=31536000  # 365 days in seconds
 ```
 
 #### 2. False Positive Monitoring
@@ -1279,13 +1278,11 @@ chown btblocker:btblocker /var/log/btblocker_detections.log
 #### 3. Firewall Hardening
 
 ```bash
-# Ensure ipset rules are persistent
+# XDP programs persist automatically
 # NixOS: Handled automatically by module
 
-# Manual: Save iptables/nftables rules
-iptables-save > /etc/iptables/rules.v4
-# Or
-nft list ruleset > /etc/nftables.conf
+# Manual: No persistence needed - XDP programs are loaded on service start
+# Ban list is managed in eBPF maps with automatic expiry
 ```
 
 ### Documentation

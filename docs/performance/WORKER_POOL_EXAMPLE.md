@@ -62,7 +62,7 @@ func New(config Config) (*Blocker, error) {
 	return &Blocker{
 		config:          config,
 		analyzer:        NewAnalyzer(config),
-		banManager:      NewIPBanManager(config.IPSetName, config.BanDuration),
+		xdpFilter:       xdpFilter, // XDP filter for kernel-space blocking
 		handles:         handles,
 		logger:          logger,
 		detectionLogger: detectionLogger,
