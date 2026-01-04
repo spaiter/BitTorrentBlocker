@@ -160,15 +160,20 @@ in {
         # Security hardening
         NoNewPrivileges = false; # Required for CAP_NET_ADMIN
         PrivateTmp = true;
-        ProtectSystem = "strict";
+        ProtectSystem = "strict"; # Strict is safe: eBPF only needs /sys/fs/bpf access (via CAP_BPF/CAP_SYS_ADMIN)
         ProtectHome = true;
+        ProtectKernelModules = false; # Required for eBPF program loading
         ReadWritePaths = mkIf (cfg.detectionLogPath != "") [
           (dirOf cfg.detectionLogPath)
         ];
 
         # Capabilities for XDP (eBPF program loading and attachment)
-        AmbientCapabilities = [ "CAP_NET_ADMIN" "CAP_NET_RAW" ];
-        CapabilityBoundingSet = [ "CAP_NET_ADMIN" "CAP_NET_RAW" ];
+        # CAP_NET_ADMIN: Required for XDP attachment and network configuration
+        # CAP_NET_RAW: Required for raw packet processing
+        # CAP_BPF: Required for eBPF program loading (Linux 5.8+)
+        # CAP_SYS_ADMIN: Fallback for eBPF on older kernels (<5.8)
+        AmbientCapabilities = [ "CAP_NET_ADMIN" "CAP_NET_RAW" "CAP_BPF" "CAP_SYS_ADMIN" ];
+        CapabilityBoundingSet = [ "CAP_NET_ADMIN" "CAP_NET_RAW" "CAP_BPF" "CAP_SYS_ADMIN" ];
 
         # eBPF/XDP requires unlimited memory locking for map creation
         LimitMEMLOCK = "infinity";
