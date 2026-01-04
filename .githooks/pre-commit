@@ -84,7 +84,58 @@ else
     echo -e "${YELLOW}Install from: https://golangci-lint.run/usage/install/${NC}"
 fi
 
-# 3. Run unit tests (without race detector on Windows if CGO is disabled)
+# 3. Auto-update Nix vendorHash when Go dependencies change
+echo ""
+echo "🔄 Checking for Go dependency changes..."
+if git diff --cached --name-only | grep -qE '^(go.mod|go.sum)$'; then
+    if command -v nix &> /dev/null && [ -f "flake.nix" ]; then
+        echo -e "${YELLOW}Go dependencies changed, recalculating Nix vendorHash...${NC}"
+
+        # Try to build and capture the hash mismatch error
+        # The error message contains the correct hash we need
+        BUILD_OUTPUT=$(nix build .#btblocker --no-link 2>&1 || true)
+
+        # Extract the "got:" hash from the error message
+        NEW_HASH=$(echo "$BUILD_OUTPUT" | grep -oP 'got:\s+\K[a-zA-Z0-9:+/=-]+' | head -1)
+
+        if [ -n "$NEW_HASH" ]; then
+            # Get the current hash from flake.nix
+            CURRENT_HASH=$(grep -oP 'vendorHash = "\K[^"]+' flake.nix)
+
+            if [ "$NEW_HASH" != "$CURRENT_HASH" ]; then
+                echo -e "${YELLOW}Updating vendorHash in flake.nix...${NC}"
+                echo "  Old: $CURRENT_HASH"
+                echo "  New: $NEW_HASH"
+
+                # Update the hash in flake.nix
+                sed -i "s|vendorHash = \"$CURRENT_HASH\"|vendorHash = \"$NEW_HASH\"|" flake.nix
+
+                # Re-stage flake.nix
+                git add flake.nix
+
+                print_status 0 "Nix vendorHash updated and re-staged"
+            else
+                print_status 0 "Nix vendorHash is already up to date"
+            fi
+        else
+            # No hash mismatch means it's already correct or build succeeded
+            if echo "$BUILD_OUTPUT" | grep -q "hash mismatch"; then
+                print_status 1 "Failed to extract new vendorHash from Nix build output"
+                echo "$BUILD_OUTPUT"
+                OVERALL_STATUS=1
+            else
+                print_status 0 "Nix build succeeded, vendorHash is correct"
+            fi
+        fi
+    else
+        echo -e "${YELLOW}⚠ Nix not found or flake.nix missing, skipping vendorHash update${NC}"
+        echo -e "${YELLOW}Install Nix from: https://nixos.org/download.html${NC}"
+    fi
+else
+    echo -e "${YELLOW}⚠ No Go dependency changes detected${NC}"
+fi
+
+# 4. Run unit tests (without race detector on Windows if CGO is disabled)
 echo ""
 echo "🧪 Running unit tests..."
 # Get all test directories (vendor is automatically excluded by go list)
@@ -106,7 +157,7 @@ else
     fi
 fi
 
-# 4. Run integration tests (excluding XDP tests which require privileges)
+# 5. Run integration tests (excluding XDP tests which require privileges)
 echo ""
 echo "🔬 Running integration tests (excluding XDP)..."
 if go test -tags=integration -skip='TestXDP' ./test/integration -timeout=30s -v 2>&1 | tee /tmp/integration.out; then
@@ -118,7 +169,7 @@ else
 fi
 rm -f /tmp/integration.out
 
-# 5. Check for common issues
+# 6. Check for common issues
 echo ""
 echo "🔍 Checking for common issues..."
 
