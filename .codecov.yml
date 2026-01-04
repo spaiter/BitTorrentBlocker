@@ -1,0 +1,54 @@
+codecov:
+  require_ci_to_pass: yes
+  notify:
+    wait_for_ci: yes
+
+coverage:
+  precision: 2
+  round: down
+  range: "60...95"
+
+  status:
+    project:
+      default:
+        target: 70%
+        threshold: 1%
+        if_ci_failed: error
+
+    patch:
+      default:
+        target: 70%
+        threshold: 5%
+
+# Ignore patterns - exclude from coverage calculations
+ignore:
+  - "cmd/**"                    # CLI entry points (integration tested)
+  - "internal/xdp/**"           # XDP code (requires Linux kernel, tested separately in Docker)
+  - "**/*_test.go"              # Test files
+  - "**/test/**"                # Test directories
+  - "**/*.pb.go"                # Generated protobuf
+  - "**/mock_*.go"              # Mock files
+  - "internal/blocker/blocker_pool.go"  # Worker pool (not currently used)
+
+comment:
+  layout: "reach,diff,flags,tree"
+  behavior: default
+  require_changes: no
+  require_base: no
+  require_head: yes
+
+# Component flags for different test types
+flag_management:
+  default_rules:
+    carryforward: true
+    statuses:
+      - type: project
+        target: 70%
+      - type: patch
+        target: 70%
+
+flags:
+  unittests:
+    paths:
+      - internal/blocker/
+    carryforward: true
