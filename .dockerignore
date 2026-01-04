@@ -20,10 +20,11 @@ result-*
 *.zip
 
 # Test files
-*_test.go
-test/
+# Note: XDP integration tests (Dockerfile.xdp-test) need test/ and *_test.go files
+# Only exclude test artifacts and large test data
 coverage.out
 coverage.html
+test/testdata/*.pcap.gz
 
 # IDE
 .vscode
