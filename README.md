@@ -606,14 +606,15 @@ The project includes a complete NixOS module for production deployment with auto
 
           services.btblocker = {
             enable = true;
-            interface = "eth0";           # Single or multiple interfaces (comma-separated: "eth0,wg0,awg0")
-            entropyThreshold = 7.6;       # Encrypted traffic detection threshold
-            minPayloadSize = 60;          # Minimum packet size for analysis
-            ipsetName = "torrent_block";  # Name of ipset for banned IPs
-            banDuration = 18000;          # Ban duration in seconds (5 hours)
-            logLevel = "info";            # Log level: error, warn, info, debug
-            firewallBackend = "nftables"; # Firewall backend: nftables or iptables
-            cleanupOnStop = false;        # Keep banned IPs when service stops
+            interface = "eth0";                # Single or multiple interfaces (comma-separated: "eth0,wg0,awg0")
+            ipsetName = "torrent_block";       # Name of ipset for banned IPs
+            banDuration = 18000;               # Ban duration in seconds (5 hours)
+            logLevel = "info";                 # Log level: error, warn, info, debug
+            detectionLogPath = "";             # Path to detection log file (empty = disabled)
+            monitorOnly = false;               # If true, only log without banning
+            firewallBackend = "nftables";      # Firewall backend: nftables or iptables
+            cleanupOnStop = false;             # Keep banned IPs when service stops
+            whitelistPorts = [ 22 53 80 443 ]; # Ports to never block
           };
         }
       ];
@@ -669,13 +670,14 @@ in
 |--------|------|---------|-------------|
 | `enable` | bool | `false` | Enable the btblocker service |
 | `interface` | string | `"eth0"` | Network interface(s) to monitor (comma-separated for multiple: `"eth0,wg0,awg0"`) |
-| `entropyThreshold` | float | `7.6` | Entropy threshold for encrypted traffic detection |
-| `minPayloadSize` | int | `60` | Minimum payload size for analysis |
 | `ipsetName` | string | `"torrent_block"` | Name of ipset for banned IPs |
 | `banDuration` | int | `18000` | Ban duration in seconds (default: 5 hours) |
 | `logLevel` | enum | `"info"` | Log level: `error`, `warn`, `info`, `debug` |
+| `detectionLogPath` | string | `""` | Path to detection log file for detailed packet analysis (empty = disabled) |
+| `monitorOnly` | bool | `false` | If true, only log detections without banning IPs (perfect for testing) |
 | `firewallBackend` | enum | `"nftables"` | Firewall backend: `nftables` or `iptables` |
 | `cleanupOnStop` | bool | `false` | Destroy ipset and clear banned IPs when service stops |
+| `whitelistPorts` | list | `[22, 53, 80, 443, 853, 5222, 5269]` | Ports to never block |
 
 **Firewall Backend Selection:**
 - `nftables` (default, recommended) - Modern Linux firewall
