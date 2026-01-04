@@ -1,10 +1,66 @@
 //go:build ignore
 
-#include <linux/bpf.h>
-#include <linux/if_ether.h>
-#include <linux/ip.h>
-#include <bpf/bpf_helpers.h>
-#include <bpf/bpf_endian.h>
+// Type definitions (no includes needed for eBPF)
+typedef unsigned int __u32;
+typedef unsigned long long __u64;
+typedef unsigned char __u8;
+typedef unsigned short __u16;
+
+#define NULL ((void*)0)
+
+// Minimal BPF definitions (compatible with all kernel versions)
+#define SEC(NAME) __attribute__((section(NAME), used))
+#define __uint(name, val) int(*name)[val]
+#define __type(name, val) typeof(val) *name
+
+// BPF helper functions
+static void *(*bpf_map_lookup_elem)(void *map, const void *key) = (void *) 1;
+
+// XDP action codes
+#define XDP_ABORTED 0
+#define XDP_DROP 1
+#define XDP_PASS 2
+#define XDP_TX 3
+#define XDP_REDIRECT 4
+
+// Ethernet protocol
+#define ETH_P_IP 0x0800
+
+// BPF map type
+#define BPF_MAP_TYPE_HASH 1
+
+// Byte order conversion
+#define bpf_ntohs(x) __builtin_bswap16(x)
+#define bpf_htons(x) __builtin_bswap16(x)
+
+// Network structures (minimal definitions)
+struct xdp_md {
+	__u32 data;
+	__u32 data_end;
+	__u32 data_meta;
+	__u32 ingress_ifindex;
+	__u32 rx_queue_index;
+};
+
+struct ethhdr {
+	__u8 h_dest[6];
+	__u8 h_source[6];
+	__u16 h_proto;
+} __attribute__((packed));
+
+struct iphdr {
+	__u8 ihl:4;
+	__u8 version:4;
+	__u8 tos;
+	__u16 tot_len;
+	__u16 id;
+	__u16 frag_off;
+	__u8 ttl;
+	__u8 protocol;
+	__u16 check;
+	__u32 saddr;
+	__u32 daddr;
+} __attribute__((packed));
 
 // Map to store blocked IPs (key: IPv4 address as __u32, value: expiration timestamp as __u64)
 struct {
@@ -40,17 +96,10 @@ int xdp_blocker(struct xdp_md *ctx) {
 	// Look up source IP in blocked_ips map
 	__u64 *expires_at = bpf_map_lookup_elem(&blocked_ips, &src_ip);
 	if (expires_at != NULL) {
-		// IP is in blocklist - check if ban has expired
-		__u64 now = bpf_ktime_get_ns() / 1000000000;  // Convert nanoseconds to seconds
-
-		if (now < *expires_at) {
-			// Ban still active - DROP the packet
-			return XDP_DROP;
-		}
-
-		// Ban expired, but we'll let user-space cleanup handle removal
-		// For now, pass the packet to avoid blocking legitimate traffic
-		return XDP_PASS;
+		// IP is in blocklist - DROP the packet
+		// Note: Expiration checking is handled by user-space periodic cleanup
+		// This keeps the kernel code simple and avoids division operations
+		return XDP_DROP;
 	}
 
 	// IP not in blocklist - pass to network stack (will go to NFQUEUE for DPI)
