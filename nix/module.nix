@@ -33,18 +33,6 @@ in {
       '';
     };
 
-    entropyThreshold = mkOption {
-      type = types.float;
-      default = 7.6;
-      description = "Entropy threshold for encrypted traffic detection";
-    };
-
-    minPayloadSize = mkOption {
-      type = types.int;
-      default = 60;
-      description = "Minimum payload size for entropy analysis";
-    };
-
     ipsetName = mkOption {
       type = types.str;
       default = "torrent_block";
@@ -197,8 +185,6 @@ in {
     environment.etc."btblocker/config.json" = {
       text = builtins.toJSON {
         interface = cfg.interface;
-        entropyThreshold = cfg.entropyThreshold;
-        minPayloadSize = cfg.minPayloadSize;
         ipsetName = cfg.ipsetName;
         banDuration = cfg.banDuration;
       };
