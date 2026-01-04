@@ -280,6 +280,44 @@ journalctl -u btblocker -n 50
 boot.kernelPackages = pkgs.linuxPackages_latest;
 ```
 
+### XDP MEMLOCK Error
+
+**Error**: "operation not permitted (MEMLOCK may be too low, consider rlimit.RemoveMemlock)"
+
+**Full error message**:
+```
+Failed to initialize XDP filter: loading eBPF objects: field XdpBlocker:
+program xdp_blocker: map blocked_ips: map create: operation not permitted
+(MEMLOCK may be too low, consider rlimit.RemoveMemlock)
+```
+
+**Cause**: eBPF programs require unlimited memory locking to create kernel maps. The default systemd `RLIMIT_MEMLOCK` is too restrictive.
+
+**Solution**: The NixOS module automatically sets `LimitMEMLOCK = "infinity"` in the systemd service (as of commit 318f805). If you're still seeing this error:
+
+1. **Update to the latest module**:
+   ```bash
+   # Update flake inputs
+   nix flake update bittorrent-blocker
+
+   # Rebuild system
+   sudo nixos-rebuild switch --flake .#yourhostname
+   ```
+
+2. **Verify the fix is applied**:
+   ```bash
+   # Check systemd service configuration
+   systemctl show btblocker | grep LimitMEMLOCK
+   # Should output: LimitMEMLOCK=infinity
+   ```
+
+3. **If using an older version** (before commit 318f805), manually add to your configuration:
+   ```nix
+   systemd.services.btblocker.serviceConfig = {
+     LimitMEMLOCK = "infinity";
+   };
+   ```
+
 ### No Traffic Being Analyzed
 
 **Problem**: Blocker running but not seeing traffic
