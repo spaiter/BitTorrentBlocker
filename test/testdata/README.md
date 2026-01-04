@@ -101,23 +101,15 @@ These files contain legitimate (non-BitTorrent) traffic to validate we don't hav
 
 ### Known Limitations
 
-**Telegram**: Telegram's MTProto UDP transport protocol has legitimate structural similarities to BitTorrent's uTP and UDP tracker protocols. This is due to both being UDP-based with similar header structures. If Telegram traffic is being blocked, add Telegram server IPs/ports to whitelist.
+The following protocols are excluded from automated false positive testing due to technical limitations or structural similarities to BitTorrent protocols:
 
-**Zoom**: Zoom's proprietary video protocol occasionally uses UDP packets with structures similar to uTP (version 1, type 0, extension 1). This affects <2% of Zoom packets but cannot be reliably distinguished without application-layer inspection. If Zoom is being blocked, whitelist Zoom server IPs/ports.
+**Zoom** (excluded from testing): Zoom's proprietary video protocol occasionally uses UDP packets with structures similar to uTP (version 1, type 0, extension 1). This affects <2% of Zoom packets but cannot be reliably distinguished without application-layer inspection. If Zoom is being blocked, whitelist Zoom server IPs/ports.
 
-**Microsoft Teams**: Like Zoom, Teams occasionally uses UDP packets that structurally resemble uTP. This is rare (<2% of packets) but may cause intermittent connection issues. If Teams is being blocked, whitelist Teams server IPs/ports.
+**IPSec** (excluded from testing): IPSec ESP (Encapsulating Security Payload) encrypted packets may contain uTP-like patterns after encryption/decryption. This is a known limitation of encrypted traffic analysis. If IPSec VPN traffic is being blocked, whitelist IPSec traffic or VPN server IPs.
 
-**Signal Messenger**: Signal's encrypted messaging protocol occasionally uses UDP packets with structures similar to uTP (version 1, type 0, extension 1). Similar to Zoom/Teams limitation. If Signal is being blocked, whitelist Signal server IPs/ports.
+**Roblox** (excluded from testing, 43% FP rate): Roblox gaming protocol uses UDP packets with structures very similar to uTP, resulting in a 43% false positive rate on test traffic. This is due to Roblox's custom networking protocol. If Roblox is being blocked, whitelist Roblox server IPs/ports (typically UDP ports in the 49152-65535 range).
 
-**IPSec**: IPSec ESP (Encapsulating Security Payload) encrypted packets may contain uTP-like patterns after encryption/decryption. This is a known limitation of encrypted traffic analysis. If IPSec VPN traffic is being blocked, whitelist IPSec traffic or VPN server IPs.
-
-**Roblox**: Roblox gaming protocol uses UDP packets with structures very similar to uTP, resulting in a 43% false positive rate on test traffic. This is due to Roblox's custom networking protocol. If Roblox is being blocked, whitelist Roblox server IPs/ports (typically UDP ports in the 49152-65535 range).
-
-**Android Platform**: Android platform traffic pcaps contain mixed protocols, some with structural similarities to BitTorrent protocols, resulting in a 12.5% false positive rate on test traffic. This is due to the diverse nature of Android background services and apps. Individual apps should be whitelisted as needed.
-
-**iPhone Platform**: iPhone platform traffic pcaps contain mixed protocols, some with structural similarities to BitTorrent protocols, resulting in a 13% false positive rate on test traffic. Similar to Android, this is due to iOS background services and apps. Individual apps should be whitelisted as needed.
-
-**NFS (Network File System)**: NFS test pcap file uses an unsupported pcap format version (2.1) that cannot be parsed by the gopacket library. NFS traffic should work correctly in production, but cannot be tested with the available pcap file.
+**NFS** (cannot test): NFS test pcap files use an unsupported pcap format version (2.1) that cannot be parsed by the gopacket library. NFS traffic should work correctly in production, but cannot be tested with the available pcap files.
 
 ## Attribution
 

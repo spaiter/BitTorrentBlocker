@@ -12,13 +12,12 @@ This document provides instructions for adding new protocol tests to validate Bi
 
 See `test/testdata/README.md` for the complete list of tested protocols.
 
-### Known Limitations (9 protocols - documented)
+### Known Limitations (4 protocols - documented)
 
-Protocols with structural similarities to BitTorrent that may cause false positives:
-- Telegram, Zoom, Teams, Signal (uTP-like UDP patterns)
-- IPSec (ESP encrypted packets)
-- Roblox (uTP-like gaming protocol)
-- Android, iPhone (mixed platform traffic)
+Protocols excluded from automated testing due to technical limitations:
+- Zoom (uTP-like UDP patterns, <2% FP rate)
+- IPSec (ESP encrypted packets may contain uTP-like patterns)
+- Roblox (uTP-like gaming protocol, 43% FP rate)
 - NFS (unsupported pcap format v2.1)
 
 ## Adding New Protocol Tests
