@@ -22,8 +22,7 @@ result-*
 # Test files (production builds don't need tests)
 *_test.go
 test/
-coverage.out
-coverage.html
+coverage*
 
 # IDE
 .vscode
@@ -34,6 +33,7 @@ coverage.html
 # Nix
 flake.nix
 flake.lock
+nix/
 
 # Docker
 Dockerfile
