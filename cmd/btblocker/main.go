@@ -74,6 +74,17 @@ func main() {
 	if monitorOnly := os.Getenv("MONITOR_ONLY"); monitorOnly == "true" || monitorOnly == "1" {
 		config.MonitorOnly = true
 	}
+	if enableXDP := os.Getenv("ENABLE_XDP"); enableXDP == "true" || enableXDP == "1" {
+		config.EnableXDP = true
+	}
+	if xdpMode := os.Getenv("XDP_MODE"); xdpMode != "" {
+		config.XDPMode = xdpMode
+	}
+	if cleanupInterval := os.Getenv("XDP_CLEANUP_INTERVAL"); cleanupInterval != "" {
+		if interval, err := strconv.Atoi(cleanupInterval); err == nil && interval > 0 {
+			config.CleanupInterval = interval
+		}
+	}
 
 	btBlocker, err := blocker.New(config)
 	if err != nil {
