@@ -117,6 +117,19 @@ in {
       }
     ];
 
+    # Kernel tuning for NFQUEUE and netlink performance
+    boot.kernel.sysctl = {
+      # Increase netlink socket buffer sizes to prevent "no buffer space available" errors
+      # NFQUEUE uses netlink sockets to communicate between kernel and userspace
+      "net.core.rmem_max" = 134217728;     # 128MB receive buffer (default: ~200KB)
+      "net.core.rmem_default" = 16777216;  # 16MB default receive buffer
+      "net.core.wmem_max" = 134217728;     # 128MB send buffer
+      "net.core.wmem_default" = 16777216;  # 16MB default send buffer
+
+      # Increase netlink socket buffer specifically
+      "net.core.optmem_max" = 81920;       # 80KB option memory (default: 20KB)
+    };
+
     # Configure iptables rules for NFQUEUE
     networking.firewall.extraCommands = mkIf (config.networking.firewall.enable) ''
       # BitTorrent Blocker: Redirect packets to NFQUEUE for DPI
