@@ -1,6 +1,6 @@
 module github.com/example/BitTorrentBlocker
 
-go 1.20
+go 1.25
 
 // Dependencies for BitTorrent detection and blocking
 
