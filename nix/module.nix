@@ -169,6 +169,9 @@ in {
         # Capabilities for XDP (eBPF program loading and attachment)
         AmbientCapabilities = [ "CAP_NET_ADMIN" "CAP_NET_RAW" ];
         CapabilityBoundingSet = [ "CAP_NET_ADMIN" "CAP_NET_RAW" ];
+
+        # eBPF/XDP requires unlimited memory locking for map creation
+        LimitMEMLOCK = "infinity";
       };
     };
 
