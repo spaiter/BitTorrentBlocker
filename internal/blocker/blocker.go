@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"sync"
 	"time"
 
+	"github.com/example/BitTorrentBlocker/internal/xdp"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcap"
@@ -20,6 +22,7 @@ type Blocker struct {
 	handles         []*pcap.Handle
 	logger          *Logger
 	detectionLogger *DetectionLogger
+	xdpFilter       *xdp.XDPFilter // Optional XDP filter for two-tier architecture
 }
 
 // New creates a new BitTorrent blocker instance with passive monitoring (like ndpiReader)
@@ -69,14 +72,39 @@ func New(config Config) (*Blocker, error) {
 		logger.Info("Opened interface %s for monitoring", iface)
 	}
 
-	return &Blocker{
+	blocker := &Blocker{
 		config:          config,
 		analyzer:        NewAnalyzer(config),
 		banManager:      NewIPBanManager(config.IPSetName, config.BanDuration),
 		handles:         handles,
 		logger:          logger,
 		detectionLogger: detectionLogger,
-	}, nil
+	}
+
+	// Initialize XDP filter if enabled (two-tier architecture)
+	if config.EnableXDP {
+		logger.Info("Initializing XDP filter on %s (mode: %s)", config.Interfaces[0], config.XDPMode)
+		xdpFilter, err := xdp.NewXDPFilter(config.Interfaces[0])
+		if err != nil {
+			// Close pcap handles before returning error
+			for _, h := range handles {
+				h.Close()
+			}
+			if detectionLogger != nil {
+				detectionLogger.Close()
+			}
+			return nil, fmt.Errorf("failed to initialize XDP filter: %w (XDP requires Linux 4.18+)", err)
+		}
+
+		// Start periodic cleanup of expired IPs
+		cleanupInterval := time.Duration(config.CleanupInterval) * time.Second
+		xdpFilter.GetMapManager().StartPeriodicCleanup(cleanupInterval)
+		logger.Info("XDP filter initialized successfully (cleanup interval: %v)", cleanupInterval)
+
+		blocker.xdpFilter = xdpFilter
+	}
+
+	return blocker, nil
 }
 
 // Start begins the passive packet monitoring loop (like ndpiReader)
@@ -85,7 +113,13 @@ func (b *Blocker) Start(ctx context.Context) error {
 	if b.config.MonitorOnly {
 		mode = "MONITOR ONLY - no blocking"
 	}
-	b.logger.Info("BitTorrent blocker started on %d interface(s) (passive monitoring, log level: %s, mode: %s)", len(b.config.Interfaces), b.config.LogLevel, mode)
+
+	architecture := "single-tier (DPI only)"
+	if b.xdpFilter != nil {
+		architecture = "two-tier (XDP + DPI)"
+	}
+
+	b.logger.Info("BitTorrent blocker started on %d interface(s) (passive monitoring, log level: %s, mode: %s, architecture: %s)", len(b.config.Interfaces), b.config.LogLevel, mode, architecture)
 
 	// Use WaitGroup to wait for all interface monitors to finish
 	var wg sync.WaitGroup
@@ -227,6 +261,20 @@ func (b *Blocker) processPacket(packet gopacket.Packet, iface string) {
 
 		// Ban IP only if not in monitor-only mode
 		if !b.config.MonitorOnly {
+			// Add to XDP blocklist if two-tier architecture is enabled
+			if b.xdpFilter != nil {
+				ip := net.ParseIP(srcIP)
+				if ip != nil {
+					duration := time.Duration(b.config.BanDuration) * time.Second
+					if err := b.xdpFilter.GetMapManager().AddIP(ip, duration); err != nil {
+						b.logger.Error("[%s] Failed to add IP %s to XDP map: %v", iface, srcIP, err)
+					} else {
+						b.logger.Debug("[%s] Added IP %s to XDP blocklist (expires in %v)", iface, srcIP, duration)
+					}
+				}
+			}
+
+			// Also maintain ipset for backward compatibility (single-tier mode)
 			if err := b.banManager.BanIP(srcIP); err != nil {
 				b.logger.Error("[%s] Failed to ban IP %s: %v", iface, srcIP, err)
 			}
@@ -236,13 +284,25 @@ func (b *Blocker) processPacket(packet gopacket.Packet, iface string) {
 
 // Close cleans up resources
 func (b *Blocker) Close() error {
+	// Close XDP filter first (detach from interface)
+	if b.xdpFilter != nil {
+		b.logger.Info("Closing XDP filter")
+		if err := b.xdpFilter.Close(); err != nil {
+			b.logger.Error("Failed to close XDP filter: %v", err)
+		}
+	}
+
+	// Close pcap handles
 	for _, handle := range b.handles {
 		if handle != nil {
 			handle.Close()
 		}
 	}
+
+	// Close detection logger
 	if b.detectionLogger != nil {
 		b.detectionLogger.Close()
 	}
+
 	return nil
 }
