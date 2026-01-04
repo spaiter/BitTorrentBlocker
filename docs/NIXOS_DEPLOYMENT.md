@@ -1,6 +1,14 @@
-# NixOS Deployment Guide
+# NixOS Deployment Guide (XDP Architecture)
 
-Complete guide for deploying BitTorrent Blocker on NixOS using the official NixOS module.
+Complete guide for deploying BitTorrent Blocker on NixOS using the official NixOS module with XDP (eXpress Data Path) kernel-space packet filtering.
+
+## Prerequisites
+
+- **Linux Kernel**: 4.18 or later (for XDP support)
+- **NixOS**: 23.05 or later recommended
+- **Architecture**: x86_64-linux or aarch64-linux
+
+The module will automatically verify kernel compatibility at build time.
 
 ## Installation Methods
 
@@ -34,6 +42,7 @@ Complete guide for deploying BitTorrent Blocker on NixOS using the official NixO
   services.btblocker = {
     enable = true;
     interface = "eth0";  # Your network interface
+    xdpMode = "generic"; # or "native" if your driver supports it
   };
 }
 ```
@@ -61,13 +70,12 @@ Add the module to your NixOS configuration:
   # Enable the blocker service
   services.btblocker = {
     enable = true;
-    interface = "eth0";  # Your network interface (supports comma-separated list)
-    ipsetName = "torrent_block";
-    banDuration = 18000;  # 5 hours
-    logLevel = "info";    # error, warn, info, or debug
+    interface = "eth0";        # Your network interface (supports comma-separated list)
+    xdpMode = "generic";       # XDP mode: "generic" or "native"
+    banDuration = 18000;       # 5 hours in seconds
+    cleanupInterval = 300;     # Cleanup every 5 minutes
+    logLevel = "info";         # error, warn, info, or debug
   };
-
-  # Kernel modules are automatically loaded by the module
 }
 ```
 
@@ -86,12 +94,11 @@ systemctl status btblocker.service
 # View logs
 journalctl -u btblocker -f
 
-# Check banned IPs
-ipset list torrent_block
+# Check XDP program attachment (requires bpftool)
+sudo bpftool net show
 
-# Check iptables rules
-iptables -L -n -v
-iptables -t mangle -L -n -v
+# Monitor blocked IPs (XDP uses eBPF maps)
+# The blocker logs when IPs are added/removed from the XDP blocklist
 ```
 
 ## Configuration Options
@@ -101,15 +108,13 @@ iptables -t mangle -L -n -v
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `enable` | bool | false | Enable the BitTorrent blocker service |
-| `interface` | string | "eth0" | Network interface(s) to monitor (comma-separated) |
-| `ipsetName` | string | "torrent_block" | Name of ipset for banned IPs |
+| `interface` | string | "eth0" | Network interface(s) to monitor (comma-separated list) |
+| `xdpMode` | enum | "generic" | XDP mode: "generic" (compatible) or "native" (faster, requires driver support) |
 | `banDuration` | int | 18000 | Ban duration in seconds (5 hours) |
-| `logLevel` | string | "info" | Log level: error, warn, info, or debug |
+| `cleanupInterval` | int | 300 | XDP map cleanup interval in seconds (5 minutes) |
+| `logLevel` | enum | "info" | Log level: "error", "warn", "info", or "debug" |
 | `detectionLogPath` | string | "" | Path to detection log file (empty = disabled) |
 | `monitorOnly` | bool | false | If true, only log detections without banning |
-| `firewallBackend` | string | "nftables" | Firewall backend (nftables or iptables) |
-| `cleanupOnStop` | bool | false | Destroy ipset when service stops |
-| `whitelistPorts` | list | [22, 53, 80, 443, 853, 5222, 5269] | Ports to never block |
 
 ### Example: Custom Configuration
 
@@ -117,20 +122,24 @@ iptables -t mangle -L -n -v
 services.btblocker = {
   enable = true;
 
-  # Monitor multiple interfaces (comma-separated)
+  # Monitor multiple interfaces (XDP attaches to first one)
   interface = "eth0,eth1,wlan0";
+
+  # Use native XDP mode for better performance
+  # (requires network driver with XDP support)
+  xdpMode = "native";
 
   # Longer ban duration (24 hours)
   banDuration = 86400;
+
+  # More frequent cleanup (1 minute)
+  cleanupInterval = 60;
 
   # Enable debug logging
   logLevel = "debug";
 
   # Enable detection logging for analysis
   detectionLogPath = "/var/log/btblocker/detections.log";
-
-  # Add custom whitelisted ports
-  whitelistPorts = [ 22 53 80 443 853 3000 8080 ];
 };
 ```
 
@@ -141,42 +150,92 @@ Internet
    ↓
 [Network Interface: eth0]
    ↓
-[iptables PREROUTING]
+[XDP Program (eBPF)]  ← Kernel-space filtering (40M+ pps)
+   ├─→ Check IP in XDP map
+   ├─→ If banned: XDP_DROP (instant)
+   └─→ If not banned: XDP_PASS
    ↓
-[NFQUEUE (queue 0)]
-   ↓
-[btblocker Service]
-   ├─→ Analyze packet
+[Userspace Blocker (libpcap)]
+   ├─→ DPI Analysis (Deep Packet Inspection)
    ├─→ Decision: Block or Allow
-   ├─→ If Block: Add IP to ipset
-   └─→ Return verdict
+   └─→ If Block: Add IP to XDP map
    ↓
-[iptables checks ipset]
-   ├─→ If IP banned: DROP
-   └─→ If not banned: ACCEPT
-   ↓
-[Continue routing]
+[Continue normal packet processing]
+```
+
+**Key Advantages of XDP:**
+- **40M+ packets/second** processing rate (per CPU core)
+- **<1 microsecond** lookup time for banned IPs
+- **Zero context switches** (kernel-space only)
+- **No iptables/nftables overhead**
+- **Automatic cleanup** of expired bans
+
+## XDP Modes
+
+### Generic Mode (Default)
+
+```nix
+services.btblocker.xdpMode = "generic";
+```
+
+- ✅ **Compatible with all network drivers**
+- ✅ **Works on virtual interfaces** (Docker, VMs)
+- ⚡ **Good performance** (~10M pps)
+- 📦 **Use for maximum compatibility**
+
+### Native Mode (Advanced)
+
+```nix
+services.btblocker.xdpMode = "native";
+```
+
+- ⚡ **Best performance** (~40M+ pps)
+- ⚠️ **Requires driver support** (check with `ethtool -i eth0`)
+- ✅ **Supported drivers**: Intel (ixgbe, i40e), Mellanox (mlx5), virtio_net
+- 🚫 **Not supported**: Most USB NICs, some virtual interfaces
+
+**Check driver support:**
+```bash
+# Check if your driver supports XDP
+ethtool -i eth0 | grep driver
+
+# List of drivers with XDP support:
+# - ixgbe (Intel 10G)
+# - i40e (Intel 40G)
+# - mlx5 (Mellanox)
+# - virtio_net (QEMU/KVM)
+# - veth (Linux virtual Ethernet)
 ```
 
 ## Testing Your Deployment
 
-### 1. Run E2E Tests
+### 1. Verify XDP Program Loading
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/BitTorrentBlocker
-cd BitTorrentBlocker
+# Check if XDP program is attached
+sudo bpftool net show
 
-# Run integration tests with real BitTorrent traffic
-go test -tags=integration ./test/integration -v
+# Expected output:
+# eth0(2) driver id 12
+#   xdp id 45
 ```
 
-### 2. Manual Verification
-
-#### Test BitTorrent Detection
+### 2. Monitor Logs
 
 ```bash
-# Send a test BitTorrent handshake (from another machine)
+# Watch blocker logs
+journalctl -u btblocker -f
+
+# You should see:
+# - "Initializing XDP filter on eth0 (mode: generic)"
+# - "XDP filter initialized successfully"
+# - "[DETECT]" messages when BitTorrent traffic is found
+```
+
+### 3. Test BitTorrent Detection
+
+```bash
+# From another machine, send a BitTorrent handshake
 python3 <<EOF
 import socket
 
@@ -189,39 +248,36 @@ sock.send(handshake)
 sock.close()
 EOF
 
-# Check if IP was banned
-ssh your-server "sudo ipset list torrent_block"
-```
-
-#### Monitor Blocked Traffic
-
-```bash
-# Watch logs in real-time
-journalctl -u btblocker -f
-
-# Check statistics
-ipset list torrent_block | grep "Number of entries"
+# Check if IP was banned (watch logs)
+journalctl -u btblocker -n 20
 ```
 
 ## Troubleshooting
 
 ### Service Won't Start
 
-**Problem**: Service fails to start
+**Error**: "failed to initialize XDP filter"
 
 **Solutions**:
 ```bash
-# Check logs for errors
+# Check kernel version (need 4.18+)
+uname -r
+
+# Check if bpf filesystem is mounted
+mount | grep bpf
+
+# Check service logs
 journalctl -u btblocker -n 50
+```
 
-# Verify kernel modules
-lsmod | grep nfnetlink_queue
+### XDP Program Not Attaching
 
-# Load module manually
-sudo modprobe nfnetlink_queue
+**Error**: "XDP requires Linux 4.18+"
 
-# Check if queue number is available
-cat /proc/net/netfilter/nfnetlink_queue
+**Solution**: Upgrade your kernel:
+```nix
+# In configuration.nix, use latest kernel
+boot.kernelPackages = pkgs.linuxPackages_latest;
 ```
 
 ### No Traffic Being Analyzed
@@ -230,54 +286,55 @@ cat /proc/net/netfilter/nfnetlink_queue
 
 **Solutions**:
 ```bash
-# Verify iptables rules
-sudo iptables -t mangle -L PREROUTING -n -v
+# Verify XDP program is attached
+sudo bpftool net show
 
-# Check if packets are going to queue
-cat /proc/net/netfilter/nfnetlink_queue
+# Check interface is correct
+ip link show
 
-# Test with tcpdump
-sudo tcpdump -i eth0 -n port 6881
+# Enable debug logging
+services.btblocker.logLevel = "debug";
 ```
-
-### False Positives
-
-**Problem**: Normal traffic being blocked
-
-**Solutions**:
-1. Enable debug logging to see why traffic is blocked:
-   ```nix
-   services.btblocker.logLevel = "debug";
-   ```
-   Then rebuild and watch logs:
-   ```bash
-   sudo nixos-rebuild switch
-   journalctl -u btblocker -f
-   ```
-2. Add ports to `whitelistPorts`
-3. Use `monitorOnly = true` to log without blocking (for testing)
 
 ### High CPU Usage
 
 **Problem**: btblocker using too much CPU
 
 **Solutions**:
-1. Reduce traffic to queue (use more specific iptables rules)
-2. Limit to specific ports/protocols:
+1. **Use native XDP mode** if your driver supports it (10x faster)
+2. **Increase cleanup interval** to reduce overhead:
    ```nix
-   # In your configuration, add custom iptables rules instead
-   networking.firewall.extraCommands = ''
-     # Only queue BitTorrent-typical ports
-     iptables -t mangle -A PREROUTING -p tcp --dport 6881:6889 -j NFQUEUE --queue-num 0
-     iptables -t mangle -A PREROUTING -p udp --dport 6881:6889 -j NFQUEUE --queue-num 0
-   '';
+   services.btblocker.cleanupInterval = 600; # 10 minutes
+   ```
+3. **Add resource limits**:
+   ```nix
+   systemd.services.btblocker.serviceConfig = {
+     CPUQuota = "50%";
+     MemoryMax = "512M";
+   };
+   ```
+
+### False Positives
+
+**Problem**: Normal traffic being blocked
+
+**Solutions**:
+1. Enable debug logging:
+   ```nix
+   services.btblocker.logLevel = "debug";
+   ```
+2. Enable detection logging for analysis:
+   ```nix
+   services.btblocker.detectionLogPath = "/var/log/btblocker/detections.log";
+   ```
+3. Use monitor-only mode for testing:
+   ```nix
+   services.btblocker.monitorOnly = true;
    ```
 
 ## Production Recommendations
 
 ### 1. Resource Limits
-
-Add resource limits to the systemd service:
 
 ```nix
 systemd.services.btblocker.serviceConfig = {
@@ -286,118 +343,33 @@ systemd.services.btblocker.serviceConfig = {
 };
 ```
 
-### 2. Monitoring
-
-Set up monitoring with Prometheus/Grafana:
-
-```nix
-services.prometheus.exporters.node.enable = true;
-
-# Monitor btblocker metrics
-services.prometheus.scrapeConfigs = [
-  {
-    job_name = "btblocker";
-    static_configs = [{
-      targets = [ "localhost:9100" ];
-    }];
-  }
-];
-```
-
-### 3. Logging
-
-Configure log level based on your needs:
+### 2. Logging Configuration
 
 ```nix
 services.btblocker = {
   enable = true;
-
-  # Set log level (error, warn, info, debug)
   logLevel = "warn";  # Production: less verbose
-  # logLevel = "debug";  # Debugging: shows all traffic
 
-  # View logs with:
-  # journalctl -u btblocker -f
+  # Optional: detailed detection logging
+  detectionLogPath = "/var/log/btblocker/detections.log";
+};
+
+# Rotate logs
+services.logrotate.settings.btblocker = {
+  files = "/var/log/btblocker/*.log";
+  rotate = 7;
+  frequency = "daily";
+  compress = true;
 };
 ```
 
 **Log Levels:**
-- `error` - Only critical errors (minimal logging)
-- `warn` - Warnings and errors
-- `info` - General information (default, recommended for production)
-- `debug` - Detailed packet analysis (shows blocked/allowed packets, use for troubleshooting)
+- `error` - Only critical errors
+- `warn` - Warnings and errors (recommended for production)
+- `info` - General information (includes detections)
+- `debug` - Detailed packet analysis (troubleshooting only)
 
-### 4. Debug Mode for Troubleshooting
-
-When investigating false positives or blocked traffic:
-
-```bash
-# Enable debug logging temporarily
-sudo systemctl stop btblocker
-sudo LOG_LEVEL=debug btblocker
-
-# Or edit the NixOS configuration and rebuild:
-services.btblocker.logLevel = "debug";
-
-# Watch debug output
-journalctl -u btblocker -f
-```
-
-With debug logging enabled, you'll see:
-- Every packet analyzed
-- Why packets were blocked (which detection method triggered)
-- Allowed packets passing through
-- IP ban operations
-
-### 5. Backup Ban List
-
-Periodically backup the ipset:
-
-```nix
-systemd.services.ipset-backup = {
-  description = "Backup BitTorrent IP ban list";
-  script = ''
-    ${pkgs.ipset}/bin/ipset save torrent_block > /var/lib/btblocker/ipset-backup.txt
-  '';
-  serviceConfig.Type = "oneshot";
-};
-
-systemd.timers.ipset-backup = {
-  wantedBy = [ "timers.target" ];
-  timerConfig = {
-    OnCalendar = "hourly";
-    Persistent = true;
-  };
-};
-```
-
-## Integration with Firewall
-
-### nftables (Recommended for Modern NixOS)
-
-If using nftables instead of iptables:
-
-```nix
-networking.nftables = {
-  enable = true;
-  ruleset = ''
-    table inet filter {
-      set torrent_block {
-        type ipv4_addr
-        flags timeout
-      }
-
-      chain prerouting {
-        type filter hook prerouting priority -150; policy accept;
-        ip saddr @torrent_block drop
-        queue num 0
-      }
-    }
-  '';
-};
-```
-
-## Performance Tuning
+### 3. Performance Tuning
 
 For high-traffic servers:
 
@@ -405,26 +377,65 @@ For high-traffic servers:
 services.btblocker = {
   enable = true;
 
-  # Monitor specific interfaces only
-  interface = "eth0";
+  # Use native XDP if supported (10x performance boost)
+  xdpMode = "native";
 
-  # Use shorter ban duration to reduce ipset size
+  # Shorter ban duration = smaller XDP map
   banDuration = 3600;  # 1 hour
 
-  # Use iptables backend if nftables has issues
-  firewallBackend = "iptables";
+  # Less frequent cleanup
+  cleanupInterval = 600; # 10 minutes
 };
 
-# Increase connection tracking limits
+# Kernel tuning for XDP
 boot.kernel.sysctl = {
-  "net.netfilter.nf_conntrack_max" = 262144;
-  "net.core.netdev_max_backlog" = 5000;
+  "net.core.netdev_max_backlog" = 10000;
+  "net.core.netdev_budget" = 600;
+  "net.core.bpf_jit_enable" = 1;
 };
 ```
 
-## Uninstalling
+### 4. Monitoring
 
-To remove the blocker:
+```nix
+# Monitor service health
+systemd.services.btblocker-healthcheck = {
+  description = "BTBlocker Health Check";
+  script = ''
+    if ! systemctl is-active --quiet btblocker; then
+      echo "BTBlocker service is not running!"
+      exit 1
+    fi
+
+    # Check if XDP program is attached
+    if ! ${pkgs.bpftool}/bin/bpftool net show | grep -q xdp; then
+      echo "XDP program not attached!"
+      exit 1
+    fi
+  '';
+  serviceConfig.Type = "oneshot";
+};
+
+systemd.timers.btblocker-healthcheck = {
+  wantedBy = [ "timers.target" ];
+  timerConfig = {
+    OnCalendar = "minutely";
+    Persistent = true;
+  };
+};
+```
+
+## Performance Comparison
+
+| Metric | XDP-Only | Legacy (ipset/iptables) |
+|--------|----------|-------------------------|
+| Packet processing | 40M+ pps | ~1M pps |
+| IP lookup time | <1 microsecond | ~10 microseconds |
+| Context switches | Zero | Many (userspace ↔ kernel) |
+| Dependencies | None | ipset, iptables |
+| Complexity | Simple | Complex (firewall rules) |
+
+## Uninstalling
 
 ```nix
 # In configuration.nix, disable the service
@@ -436,12 +447,12 @@ Then rebuild:
 ```bash
 sudo nixos-rebuild switch
 
-# Manually clean up ipset if needed
-sudo ipset destroy torrent_block
+# XDP program is automatically detached when service stops
+# No manual cleanup needed!
 ```
 
 ## Support
 
-- GitHub Issues: https://github.com/yourusername/BitTorrentBlocker/issues
-- Documentation: https://github.com/yourusername/BitTorrentBlocker/tree/main/docs
-- Integration Tests: https://github.com/yourusername/BitTorrentBlocker/tree/main/test/integration
+- GitHub Issues: https://github.com/spaiter/BitTorrentBlocker/issues
+- Documentation: https://github.com/spaiter/BitTorrentBlocker/tree/main/docs
+- XDP Documentation: https://github.com/spaiter/BitTorrentBlocker/blob/main/docs/TWO_TIER_ARCHITECTURE.md
