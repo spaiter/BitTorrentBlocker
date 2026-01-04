@@ -1,4 +1,4 @@
-# NixOS Module for BitTorrent Blocker (XDP Architecture)
+# NixOS Module for BitTorrent Blocker (NFQUEUE + XDP Architecture)
 # This can be imported into your NixOS configuration
 
 { config, lib, pkgs, ... }:
@@ -10,7 +10,29 @@ let
 
 in {
   options.services.btblocker = {
-    enable = mkEnableOption "BitTorrent blocker service (XDP-based kernel packet filtering)";
+    enable = mkEnableOption "BitTorrent blocker service (NFQUEUE + XDP inline packet filtering)";
+
+    queueNum = mkOption {
+      type = types.int;
+      default = 0;
+      description = ''
+        NFQUEUE number for packet processing (0-65535).
+        Must match the iptables --queue-num parameter.
+      '';
+    };
+
+    chains = mkOption {
+      type = types.listOf (types.enum [ "INPUT" "FORWARD" "OUTPUT" ]);
+      default = [ "FORWARD" ];
+      description = ''
+        iptables chains to redirect to NFQUEUE.
+        - INPUT: Traffic destined for this machine
+        - FORWARD: Traffic being routed through this machine (VPN/router mode)
+        - OUTPUT: Traffic originating from this machine
+
+        Most users want FORWARD for router/VPN scenarios.
+      '';
+    };
 
     package = mkOption {
       type = types.package;
@@ -83,13 +105,34 @@ in {
   };
 
   config = mkIf cfg.enable {
-    # Ensure kernel version supports XDP (Linux 4.18+)
+    # Ensure kernel version supports XDP (Linux 4.18+) and NFQUEUE
     assertions = [
       {
         assertion = versionAtLeast config.boot.kernelPackages.kernel.version "4.18";
         message = "BitTorrent Blocker requires Linux kernel 4.18 or later for XDP support. Current kernel: ${config.boot.kernelPackages.kernel.version}";
       }
+      {
+        assertion = cfg.queueNum >= 0 && cfg.queueNum <= 65535;
+        message = "NFQUEUE number must be between 0 and 65535. Got: ${toString cfg.queueNum}";
+      }
     ];
+
+    # Configure iptables rules for NFQUEUE
+    networking.firewall.extraCommands = mkIf (config.networking.firewall.enable) ''
+      # BitTorrent Blocker: Redirect packets to NFQUEUE for DPI
+      ${concatMapStringsSep "\n" (chain: ''
+        iptables -I ${chain} -p tcp -j NFQUEUE --queue-num ${toString cfg.queueNum}
+        iptables -I ${chain} -p udp -j NFQUEUE --queue-num ${toString cfg.queueNum}
+      '') cfg.chains}
+    '';
+
+    networking.firewall.extraStopCommands = mkIf (config.networking.firewall.enable) ''
+      # BitTorrent Blocker: Remove NFQUEUE rules on stop
+      ${concatMapStringsSep "\n" (chain: ''
+        iptables -D ${chain} -p tcp -j NFQUEUE --queue-num ${toString cfg.queueNum} 2>/dev/null || true
+        iptables -D ${chain} -p udp -j NFQUEUE --queue-num ${toString cfg.queueNum} 2>/dev/null || true
+      '') cfg.chains}
+    '';
 
     # Create systemd service
     systemd.services.btblocker = {
@@ -107,6 +150,7 @@ in {
         Environment = [
           "LOG_LEVEL=${cfg.logLevel}"
           "INTERFACE=${cfg.interface}"
+          "QUEUE_NUM=${toString cfg.queueNum}"
           "BAN_DURATION=${toString cfg.banDuration}"
           "XDP_MODE=${cfg.xdpMode}"
           "XDP_CLEANUP_INTERVAL=${toString cfg.cleanupInterval}"
@@ -132,6 +176,7 @@ in {
     environment.etc."btblocker/config.json" = {
       text = builtins.toJSON {
         interface = cfg.interface;
+        queueNum = cfg.queueNum;
         banDuration = cfg.banDuration;
         xdpMode = cfg.xdpMode;
         cleanupInterval = cfg.cleanupInterval;
