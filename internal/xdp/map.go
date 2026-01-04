@@ -53,7 +53,11 @@ func (m *IPMapManager) AddIP(ip net.IP, duration time.Duration) error {
 
 	// Calculate expiration time (seconds since epoch)
 	expiresAt := time.Now().Add(duration)
-	expiresAtSec := uint64(expiresAt.Unix())
+	unixTime := expiresAt.Unix()
+	if unixTime < 0 {
+		return fmt.Errorf("invalid expiration time: %v", expiresAt)
+	}
+	expiresAtSec := uint64(unixTime) // #nosec G115 - Unix timestamps are always positive after check
 
 	// Update XDP map (kernel space)
 	if err := m.bpfMap.Put(&ipKey, &expiresAtSec); err != nil {

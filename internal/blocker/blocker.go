@@ -22,7 +22,7 @@ type Blocker struct {
 	handles         []*pcap.Handle
 	logger          *Logger
 	detectionLogger *DetectionLogger
-	xdpFilter       *xdp.XDPFilter // Optional XDP filter for two-tier architecture
+	xdpFilter       *xdp.Filter // Optional XDP filter for two-tier architecture
 }
 
 // New creates a new BitTorrent blocker instance with passive monitoring (like ndpiReader)

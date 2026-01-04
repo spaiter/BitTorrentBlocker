@@ -10,8 +10,8 @@ import (
 	"github.com/cilium/ebpf/link"
 )
 
-// XDPFilter represents the XDP-based packet filter
-type XDPFilter struct {
+// Filter represents the XDP-based packet filter
+type Filter struct {
 	ifaceName string
 	objs      *bpfObjects
 	link      link.Link
@@ -19,7 +19,7 @@ type XDPFilter struct {
 }
 
 // NewXDPFilter creates and loads a new XDP filter on the specified interface
-func NewXDPFilter(ifaceName string) (*XDPFilter, error) {
+func NewXDPFilter(ifaceName string) (*Filter, error) {
 	// Load pre-compiled eBPF objects
 	objs := &bpfObjects{}
 	if err := loadBpfObjects(objs, nil); err != nil {
@@ -29,7 +29,7 @@ func NewXDPFilter(ifaceName string) (*XDPFilter, error) {
 	// Get the network interface
 	iface, err := getInterface(ifaceName)
 	if err != nil {
-		objs.Close()
+		_ = objs.Close()
 		return nil, fmt.Errorf("getting interface %s: %w", ifaceName, err)
 	}
 
@@ -40,7 +40,7 @@ func NewXDPFilter(ifaceName string) (*XDPFilter, error) {
 		Flags:     link.XDPGenericMode, // Use generic mode for compatibility
 	})
 	if err != nil {
-		objs.Close()
+		_ = objs.Close()
 		return nil, fmt.Errorf("attaching XDP program to %s: %w", ifaceName, err)
 	}
 
@@ -49,7 +49,7 @@ func NewXDPFilter(ifaceName string) (*XDPFilter, error) {
 	// Create IP map manager
 	mapMgr := NewIPMapManager(objs.BlockedIps)
 
-	return &XDPFilter{
+	return &Filter{
 		ifaceName: ifaceName,
 		objs:      objs,
 		link:      l,
@@ -58,17 +58,17 @@ func NewXDPFilter(ifaceName string) (*XDPFilter, error) {
 }
 
 // GetMapManager returns the IP map manager for adding/removing blocked IPs
-func (f *XDPFilter) GetMapManager() *IPMapManager {
+func (f *Filter) GetMapManager() *IPMapManager {
 	return f.mapMgr
 }
 
 // Close detaches the XDP program and releases all resources
-func (f *XDPFilter) Close() error {
+func (f *Filter) Close() error {
 	log.Printf("Detaching XDP filter from interface %s", f.ifaceName)
 
 	// Stop periodic cleanup
 	if f.mapMgr != nil {
-		f.mapMgr.Close()
+		_ = f.mapMgr.Close()
 	}
 
 	// Detach XDP program
@@ -89,12 +89,12 @@ func (f *XDPFilter) Close() error {
 }
 
 // GetInterfaceName returns the name of the interface this filter is attached to
-func (f *XDPFilter) GetInterfaceName() string {
+func (f *Filter) GetInterfaceName() string {
 	return f.ifaceName
 }
 
 // GetStats returns statistics about the XDP filter
-func (f *XDPFilter) GetStats() (map[string]interface{}, error) {
+func (f *Filter) GetStats() (map[string]interface{}, error) {
 	stats := make(map[string]interface{})
 
 	if f.mapMgr != nil {

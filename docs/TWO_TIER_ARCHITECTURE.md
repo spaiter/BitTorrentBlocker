@@ -186,7 +186,7 @@ removed, _ := mapMgr.CleanupExpired()
 ```go
 type Blocker struct {
     // ... existing fields
-    xdpFilter *xdp.XDPFilter
+    xdpFilter *xdp.Filter
 }
 
 func New(config Config) (*Blocker, error) {
