@@ -73,7 +73,7 @@ internal/blocker/
 The blocker uses **inline packet filtering** via NFQUEUE + XDP:
 
 1. **Intercepts** packets via iptables NFQUEUE before they proceed
-2. **Analyzes** packets with Deep Packet Inspection (11 detection methods)
+2. **Analyzes** packets with Deep Packet Inspection (10 detection methods)
 3. **Detects** BitTorrent traffic in real-time (first packet analysis)
 4. **Drops** BitTorrent packets immediately (inline verdict)
 5. **Adds** detected IPs to XDP fast-path for kernel-level blocking
@@ -351,68 +351,65 @@ This logging is useful for:
 
 ### Detection Methods
 
-The blocker employs 11 complementary detection techniques, ordered by performance (fastest first) while maintaining high specificity:
+The blocker employs 10 complementary detection techniques, ordered by performance (fastest first) while maintaining high specificity:
 
 1. **LSD Detection** (BEP 14): Local Service Discovery multicast traffic
    - IPv4 multicast (239.192.152.143:6771) and IPv6 (ff15::efc0:988f:6771)
    - BT-SEARCH HTTP-style messages
    - Infohash + Port combinations
 
-2. **MSE/PE Encryption Detection**: Message Stream Encryption (CRITICAL)
-   - Verification Constant (VC) pattern: 8 consecutive zero bytes
-   - High entropy DH public key detection (>7.0 bits/byte in first 96 bytes)
-   - Detects encrypted BitTorrent traffic that evades signature-based detection
-
-3. **Extended Protocol Detection** (BEP 10): Extension protocol messages
-   - Message ID 20 (0x14) detection
-   - ut_metadata, ut_holepunch, upload_only, share_mode support
-   - Bencode dictionary validation
-
-4. **FAST Extension Detection** (BEP 6): FAST protocol messages
+2. **FAST Extension Detection** (BEP 6): FAST protocol messages
    - Message IDs 13-17: Suggest Piece, Have All, Have None, Reject Request, Allowed Fast
    - Message length validation for each type
 
-5. **SOCKS Proxy Detection**: Blocks SOCKS4/SOCKS5 proxy connections
-   - Connection attempt pattern matching
-   - SOCKS5 UDP unwrapping for inner traffic inspection
+3. **BitTorrent Message Structure**: TCP message format validation
+   - Length-prefixed message ID detection (BEP 3, BEP 10, BEP 52)
+   - Per-type length and field validation (Choke, Have, Bitfield, Piece, etc.)
+   - SSH/MSDO collision avoidance heuristics
+   - Extended Protocol (BEP 10) message ID 0x14 with bencode validation
 
-6. **UDP Tracker Protocol**: Deep tracker packet validation
+4. **DHT Analysis** (BEP 5): Enhanced structural bencode validation (Suricata-inspired)
+   - Query/Response/Error type checking (y:q, y:r, y:e)
+   - Suricata-specific prefix validation (d1:ad, d1:rd, d2:ip, d1:el)
+   - Transaction ID presence
+   - DHT-specific keys (nodes, values, token)
+   - **Node structure validation** - IPv4 (26 bytes/node) and IPv6 (38 bytes/node)
+   - Binary node list length verification
+
+5. **UDP Tracker Protocol**: Deep tracker packet validation
    - Magic protocol ID (0x41727101980)
    - Action types (Connect/Announce/Scrape)
    - PeerID prefix validation (60+ clients)
+   - DNS/CAPWAP/DTLS/AFS RX false positive rejection
 
-7. **HTTP-based BitTorrent Detection**: HTTP protocol analysis
+6. **HTTP-based BitTorrent Detection**: HTTP protocol analysis
    - **WebSeed Protocol** (BEP 19) - HTTP-based piece downloading
    - **Bitcomet Persistent Seed** - Proprietary HTTP protocol
    - **User-Agent Detection** - Identifies BitTorrent clients (Azureus, BitTorrent, BTWebClient, Shareaza, FlashGet)
 
-8. **Signature Matching**: 95+ known BitTorrent protocol patterns
+7. **Signature Matching**: 70+ known BitTorrent protocol patterns
    - Protocol handshakes (`\x13BitTorrent protocol`)
    - PEX extension keys (`ut_pex`, `added`, `dropped`, `added6`)
    - DHT keys (ping, get_peers, announce_peer, find_node)
-   - Extension protocol signatures (ut_metadata, ut_holepunch, yourip, reqq)
+   - Extension protocol signatures (ut_metadata, ut_holepunch)
    - Magnet links, tracker URLs
    - BitTorrent v2 keys (piece layers, file tree)
    - Client PeerIDs: qBittorrent, Transmission, µTorrent, libtorrent, Deluge, etc.
-   - WebSeed and Bitcomet HTTP patterns
 
-9. **uTP Detection** (BEP 29): Micro Transport Protocol analysis
+8. **uTP Detection** (BEP 29): Micro Transport Protocol analysis
    - Version and type validation
    - Extension chain verification
-   - Header structure validation
+   - STUN/DHCP/DTLS/WireGuard/VoIP false positive rejection
 
-10. **DHT Analysis** (BEP 5): Enhanced structural bencode validation (Suricata-inspired)
-    - Query/Response/Error type checking (y:q, y:r, y:e)
-    - Suricata-specific prefix validation (d1:ad, d1:rd, d2:ip, d1:el)
-    - Transaction ID presence
-    - DHT-specific keys (nodes, values, token)
-    - **Node structure validation** - IPv4 (26 bytes/node) and IPv6 (38 bytes/node)
-    - Binary node list length verification
+9. **MSE/PE Encryption Detection**: Message Stream Encryption (CRITICAL)
+   - High entropy DH public key detection (>6.5 bits/byte in first 96 bytes)
+   - Verification Constant (VC) pattern: 8 consecutive zero bytes
+   - crypto_provide/select field validation
+   - Requires all three conditions to match (minimizes false positives)
 
-11. **Entropy Analysis**: Last-resort detection for fully encrypted traffic
-    - Shannon entropy calculation
-    - Threshold-based blocking (>7.6 bits/byte)
-    - Catches obfuscated traffic that evades all other methods
+10. **SOCKS Proxy Detection** (optional, disabled by default)
+    - SOCKS4/SOCKS5 connection attempt pattern matching
+    - SOCKS5 UDP unwrapping for inner traffic inspection
 
 ## Development
 
@@ -495,7 +492,7 @@ make run
 
 The blocker uses multiple complementary techniques to minimize false positives:
 - **Whitelist**: Common ports excluded (HTTP, HTTPS, SSH, DNS, XMPP, DNS-over-TLS)
-- **11-Layer Detection**: Ordered by specificity to reduce false positives
+- **10-Layer Detection**: Ordered by specificity to reduce false positives
 - **Context-Specific Thresholds**: Optimized entropy thresholds per detection method (e.g., 6.5 for DH keys)
 - **Extensive Testing**: 165+ test cases covering edge cases and real-world patterns
 - **Critical MSE/PE Detection**: Catches 70-80% of encrypted BitTorrent traffic

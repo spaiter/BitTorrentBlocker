@@ -128,12 +128,16 @@ func (b *Blocker) processNFQPacket(attr nfqueue.Attribute) int {
 	verdict := nfqueue.NfAccept
 
 	// Get packet ID (required for verdict)
+	if attr.PacketID == nil {
+		b.logger.Error("NFQUEUE packet missing PacketID, skipping")
+		return 0
+	}
 	packetID := *attr.PacketID
 
 	// Get packet payload
 	if attr.Payload == nil || len(*attr.Payload) == 0 {
 		// No payload, accept by default
-		_ = b.nfq.SetVerdict(packetID, verdict)
+		b.setVerdict(packetID, verdict)
 		return 0
 	}
 
@@ -154,7 +158,7 @@ func (b *Blocker) processNFQPacket(attr nfqueue.Attribute) int {
 			srcIP := ip.SrcIP
 			if blocked, _ := b.xdpFilter.GetMapManager().IsBlocked(srcIP); blocked {
 				// Already blocked by XDP, drop immediately
-				_ = b.nfq.SetVerdict(packetID, nfqueue.NfDrop)
+				b.setVerdict(packetID, nfqueue.NfDrop)
 				return 0
 			}
 		}
@@ -173,7 +177,7 @@ func (b *Blocker) processNFQPacket(attr nfqueue.Attribute) int {
 		dstIP = ip.DstIP.String()
 	} else {
 		// Not IPv4, accept by default
-		_ = b.nfq.SetVerdict(packetID, verdict)
+		b.setVerdict(packetID, verdict)
 		return 0
 	}
 
@@ -189,20 +193,20 @@ func (b *Blocker) processNFQPacket(attr nfqueue.Attribute) int {
 		isUDP = true
 	} else {
 		// Not TCP/UDP, accept by default
-		_ = b.nfq.SetVerdict(packetID, verdict)
+		b.setVerdict(packetID, verdict)
 		return 0
 	}
 
 	// Whitelist check (fast rejection)
 	if WhitelistPorts[srcPort] || WhitelistPorts[dstPort] {
 		b.logger.Debug("Whitelisted port: %s:%d -> %d", srcIP, srcPort, dstPort)
-		_ = b.nfq.SetVerdict(packetID, verdict)
+		b.setVerdict(packetID, verdict)
 		return 0
 	}
 
 	// No payload to analyze, accept
 	if len(appLayer) == 0 {
-		_ = b.nfq.SetVerdict(packetID, verdict)
+		b.setVerdict(packetID, verdict)
 		return 0
 	}
 
@@ -254,8 +258,15 @@ func (b *Blocker) processNFQPacket(attr nfqueue.Attribute) int {
 	}
 
 	// Set verdict and return
-	_ = b.nfq.SetVerdict(packetID, verdict)
+	b.setVerdict(packetID, verdict)
 	return 0
+}
+
+// setVerdict sends a verdict for a packet and logs errors
+func (b *Blocker) setVerdict(packetID uint32, verdict int) {
+	if err := b.nfq.SetVerdict(packetID, verdict); err != nil {
+		b.logger.Error("Failed to set verdict for packet %d: %v", packetID, err)
+	}
 }
 
 // formatDuration converts seconds to a human-readable duration string

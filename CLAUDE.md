@@ -138,7 +138,7 @@ Default configuration in `config.go`:
 
 1. **NFQUEUE (Tier 1)**: Inline DPI for first-packet detection
    - All packets queued for userspace analysis
-   - Full DPI with 11 detection methods
+   - Full DPI with 10 detection methods
    - Returns verdict: DROP (BitTorrent) or ACCEPT (normal)
    - Throughput: ~1-2 Gbps
    - Latency: ~1-5ms per packet

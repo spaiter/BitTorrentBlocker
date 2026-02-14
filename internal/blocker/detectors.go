@@ -490,6 +490,23 @@ func CheckUTPRobust(packet []byte) bool {
 	return true
 }
 
+// parseBencodeLength parses a decimal length string from bencode with overflow protection.
+// Returns 0 for invalid or overflowing values.
+func parseBencodeLength(data []byte) int {
+	const maxLen = 1 << 20 // 1MB cap — no DHT message is larger
+	n := 0
+	for _, ch := range data {
+		if ch < '0' || ch > '9' {
+			continue
+		}
+		n = n*10 + int(ch-'0')
+		if n > maxLen {
+			return 0
+		}
+	}
+	return n
+}
+
 // CheckDHTNodes validates DHT node list binary structure (Suricata logic)
 // IPv4 nodes: 26 bytes per node (20-byte ID + 4-byte IP + 2-byte port)
 // IPv6 nodes: 38 bytes per node (20-byte ID + 16-byte IP + 2-byte port)
@@ -505,15 +522,7 @@ func CheckDHTNodes(payload []byte) bool {
 		// Find the colon that separates length from data
 		colonIdx := bytes.IndexByte(payload[offset:], ':')
 		if colonIdx != -1 && colonIdx > 0 && colonIdx < 10 {
-			// Extract and parse the length
-			lengthStr := string(payload[offset : offset+colonIdx])
-			// Simple length parsing (assume it's a valid number)
-			nodeDataLen := 0
-			for _, ch := range lengthStr {
-				if ch >= '0' && ch <= '9' {
-					nodeDataLen = nodeDataLen*10 + int(ch-'0')
-				}
-			}
+			nodeDataLen := parseBencodeLength(payload[offset : offset+colonIdx])
 			// Check if it's divisible by 26 (IPv4 node size)
 			if nodeDataLen >= 26 && nodeDataLen%26 == 0 {
 				return true
@@ -527,13 +536,7 @@ func CheckDHTNodes(payload []byte) bool {
 		offset := nodes6Idx + 8
 		colonIdx := bytes.IndexByte(payload[offset:], ':')
 		if colonIdx != -1 && colonIdx > 0 && colonIdx < 10 {
-			lengthStr := string(payload[offset : offset+colonIdx])
-			nodeDataLen := 0
-			for _, ch := range lengthStr {
-				if ch >= '0' && ch <= '9' {
-					nodeDataLen = nodeDataLen*10 + int(ch-'0')
-				}
-			}
+			nodeDataLen := parseBencodeLength(payload[offset : offset+colonIdx])
 			// Check if it's divisible by 38 (IPv6 node size)
 			if nodeDataLen >= 38 && nodeDataLen%38 == 0 {
 				return true
