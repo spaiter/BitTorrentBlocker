@@ -16,7 +16,6 @@ This directory contains the CI/CD pipelines for BitTorrent Blocker.
 
 2. **Build** (after tests pass):
    - Build binaries for 7 platforms (Linux, Windows, macOS)
-   - Build Nix package
    - Upload artifacts
 
 3. **Release** (after builds):
@@ -27,10 +26,6 @@ This directory contains the CI/CD pipelines for BitTorrent Blocker.
 4. **Publish** (after release):
    - Upload binaries to GitHub Release
    - Push Docker images to GHCR
-   - Push Nix packages to Cachix
-
-5. **Maintenance** (after publish):
-   - Update flake.lock with latest dependencies
 
 **Triggers:**
 - Push to `main` - Full pipeline (test → build → release → publish → maintenance)
@@ -48,7 +43,6 @@ All legacy workflows have been removed and consolidated into the single `pipelin
 - ~~`ci.yml`~~ - Removed (now: pipeline stage 1 - Tests)
 - ~~`release.yml`~~ - Removed (now: pipeline stage 3 - Release)
 - ~~`build-release.yml`~~ - Removed (now: pipeline stages 2 & 4 - Build & Publish)
-- ~~`nix.yml`~~ - Removed (now: pipeline stage 5 - Maintenance)
 - ~~`update-flake.yml`~~ - Removed (vendor hash updates no longer needed with committed vendor/)
 
 ## Pipeline Flow Diagram
@@ -62,7 +56,7 @@ All legacy workflows have been removed and consolidated into the single `pipelin
          │   STAGE 1: TEST       │
          │  ┌─────────────────┐  │
          │  │  Unit Tests     │  │
-         │  │  Integration    │  │ (parallel)
+         │  │  Integration    │  │  (parallel)
          │  │  E2E Tests      │  │
          │  │  Lint           │  │
          │  └─────────────────┘  │
@@ -72,7 +66,6 @@ All legacy workflows have been removed and consolidated into the single `pipelin
          │   STAGE 2: BUILD       │
          │  ┌─────────────────┐   │
          │  │  7 Platforms    │   │ (parallel)
-         │  │  Nix Package    │   │
          │  └─────────────────┘   │
          └───────────┬────────────┘
                      │ (all succeed)
@@ -90,14 +83,6 @@ All legacy workflows have been removed and consolidated into the single `pipelin
          │  ┌─────────────────┐   │
          │  │ Upload Binaries │   │ (parallel)
          │  │ Push Docker     │   │
-         │  │ Push to Cachix  │   │
-         │  └─────────────────┘   │
-         └───────────┬────────────┘
-                     │
-         ┌───────────▼────────────┐
-         │ STAGE 5: MAINTENANCE   │
-         │  ┌─────────────────┐   │
-         │  │ Update flake.lock│  │
          │  └─────────────────┘   │
          └────────────────────────┘
 ```
@@ -106,13 +91,10 @@ All legacy workflows have been removed and consolidated into the single `pipelin
 
 - **Binaries**: Available as GitHub Release assets
 - **Docker**: `ghcr.io/spaiter/btblocker:latest` and `ghcr.io/spaiter/btblocker:v{version}`
-- **Nix**: Available from Cachix `btblocker` cache
-
 ## Secrets Required
 
 - `GITHUB_TOKEN` - Automatic, provided by GitHub
 - `CODECOV_TOKEN` - For code coverage uploads
-- `CACHIX_AUTH_TOKEN` - For pushing to Cachix
 
 ## Testing Locally
 

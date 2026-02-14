@@ -9,14 +9,13 @@ This project uses GitHub Actions to automatically build and publish packages acr
 1. **Push commits to `main` branch** with conventional commit messages
 2. **Release workflow automatically**:
    - Determines version bump (major/minor/patch)
-   - Updates version in `cmd/btblocker/main.go` and `flake.nix`
+   - Updates version in `cmd/btblocker/main.go`
    - Creates git tag (e.g., `v0.2.1`)
    - Creates GitHub release with changelog
 
 3. **Build workflow triggers** on release creation and publishes:
    - Cross-platform binaries (Linux, Windows, macOS)
    - Docker images (multi-arch)
-   - Nix packages (via Cachix)
    - Homebrew formula
 
 ## 📦 Published Packages
@@ -91,59 +90,7 @@ services:
 
 Run with: `docker compose up -d`
 
-### 3. Nix - Cachix Binary Cache
-
-**Installation:**
-```bash
-# Direct install
-nix profile install github:spaiter/BitTorrentBlocker
-
-# Try without installing
-nix run github:spaiter/BitTorrentBlocker
-
-# Specific version
-nix profile install github:spaiter/BitTorrentBlocker/v0.2.1
-```
-
-**NixOS Configuration:**
-```nix
-# flake.nix
-{
-  inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    btblocker.url = "github:spaiter/BitTorrentBlocker";
-  };
-
-  outputs = { nixpkgs, btblocker, ... }: {
-    nixosConfigurations.myhost = nixpkgs.lib.nixosSystem {
-      modules = [
-        btblocker.nixosModules.default
-        {
-          services.btblocker = {
-            enable = true;
-            interface = "eth0";
-          };
-        }
-      ];
-    };
-  };
-}
-```
-
-**Binary Cache:**
-Pre-built binaries are available from Cachix (https://btblocker.cachix.org):
-```bash
-# Configure Cachix
-cachix use btblocker
-
-# Or manually add to /etc/nixos/configuration.nix
-nix.settings = {
-  substituters = [ "https://btblocker.cachix.org" ];
-  trusted-public-keys = [ "btblocker.cachix.org-1:..." ];
-};
-```
-
-### 4. Homebrew (Future)
+### 3. Homebrew (Future)
 
 **Installation (when formula is published to tap):**
 ```bash
@@ -219,28 +166,9 @@ The build workflow creates binaries for:
 - Publishes Docker images
 - Creates Homebrew formula
 
-### `.github/workflows/nix.yml`
-- Triggers on push and tags
-- Builds Nix package
-- Pushes to Cachix binary cache
-
 ## 🔐 Required Secrets
 
 To enable automated publishing, configure these secrets in GitHub repository settings:
-
-### CACHIX_AUTH_TOKEN
-Binary cache for Nix packages.
-
-**Setup:**
-```bash
-# Create Cachix account at https://cachix.org
-# Create cache named "btblocker"
-# Generate auth token
-cachix authtoken
-
-# Add to GitHub secrets
-gh secret set CACHIX_AUTH_TOKEN
-```
 
 ### GITHUB_TOKEN (Automatic)
 Automatically provided by GitHub Actions for:
@@ -262,19 +190,6 @@ docker build -t btblocker:test \
 
 # Test run
 docker run --rm btblocker:test --help
-```
-
-### Test Nix Build Locally
-
-```bash
-# Build package
-nix build .#btblocker --print-build-logs
-
-# Test binary
-./result/bin/btblocker --help
-
-# Check dependencies
-nix path-info .#btblocker --closure-size
 ```
 
 ### Test Cross-Platform Builds
@@ -304,12 +219,6 @@ GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 make build
 2. Check Docker build job: `gh run view <run-id> --log`
 3. Verify image: `docker pull ghcr.io/spaiter/btblocker:latest`
 
-### Nix Package Not in Cache
-
-1. Check CACHIX_AUTH_TOKEN secret is set
-2. Verify Nix workflow completed: `gh run list --workflow=nix.yml`
-3. Test cache: `nix-store --option substituters https://btblocker.cachix.org --query`
-
 ### Cross-Compilation Failures
 
 Linux ARM builds require cross-compilation toolchains:
@@ -328,11 +237,9 @@ Before creating a release:
 - [ ] All tests passing (`make test`)
 - [ ] Code coverage meets threshold (76%+)
 - [ ] Documentation updated (README.md, CHANGELOG)
-- [ ] Version bumped in main.go and flake.nix (automatic)
+- [ ] Version bumped in main.go (automatic)
 - [ ] Conventional commit messages used
-- [ ] CACHIX_AUTH_TOKEN secret configured
 - [ ] Docker build tested locally
-- [ ] Nix build tested locally
 
 ## 🔄 Version Bump Examples
 
@@ -348,5 +255,4 @@ Before creating a release:
 - [Conventional Commits](https://www.conventionalcommits.org/)
 - [Semantic Versioning](https://semver.org/)
 - [GitHub Container Registry](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry)
-- [Cachix Documentation](https://docs.cachix.org/)
 - [Docker Multi-Platform Builds](https://docs.docker.com/build/building/multi-platform/)

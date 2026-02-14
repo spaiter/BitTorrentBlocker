@@ -9,20 +9,9 @@ Complete documentation index for the BitTorrent Blocker project.
 
 ## Installation & Deployment
 
-### NixOS
-
-- **[docs/NIXOS_DEPLOYMENT.md](docs/NIXOS_DEPLOYMENT.md)** - Complete NixOS deployment guide
-  - Flake-based installation (recommended)
-  - Direct module import
-  - Configuration options reference
-  - Production deployment examples
-  - Troubleshooting and tuning
-
-### Other Platforms
-
 - **[README.md](README.md#installation)** - Installation methods
   - Binary releases (Linux, Windows, macOS)
-  - Docker deployment
+  - Docker / Docker Compose deployment
   - Build from source
 
 ## Configuration & Usage
@@ -70,16 +59,7 @@ Complete documentation index for the BitTorrent Blocker project.
   - Automatic release creation from commits
   - Multi-platform binary builds (GitHub Actions)
   - Docker image publishing (GHCR)
-  - Nix packages and Cachix binary cache
   - Version bumping strategy (conventional commits)
-
-- **[docs/CACHIX_SETUP.md](docs/CACHIX_SETUP.md)** - Nix binary cache setup
-  - Cachix configuration for faster Nix builds
-  - Publishing to cache
-  - Using the btblocker cache
-
-- **[docs/NIXPKGS_SUBMISSION.md](docs/NIXPKGS_SUBMISSION.md)** - nixpkgs submission
-  - Guide for submitting to official nixpkgs repository
 
 ## Development
 
@@ -100,9 +80,8 @@ Complete documentation index for the BitTorrent Blocker project.
 ### I want to install and use the blocker
 
 1. **[README.md](README.md)** - Overview and installation options
-2. **NixOS**: [docs/NIXOS_DEPLOYMENT.md](docs/NIXOS_DEPLOYMENT.md)
-3. **Docker**: See README Docker Compose section
-4. **Binary**: See README releases section
+2. **Docker**: See README Docker Compose section
+3. **Binary**: See README releases section
 
 ### I want to understand performance
 
@@ -114,15 +93,12 @@ Complete documentation index for the BitTorrent Blocker project.
 ### I want to deploy in production
 
 1. **[README.md](README.md#production-deployment)** - Deployment scenarios
-2. **NixOS**: [docs/NIXOS_DEPLOYMENT.md](docs/NIXOS_DEPLOYMENT.md)
-3. **High traffic (>10 Gbps)**: [docs/performance/WORKER_POOL_EXAMPLE.md](docs/performance/WORKER_POOL_EXAMPLE.md)
-4. **Performance tuning**: [docs/performance/MULTITHREADING_ANALYSIS.md](docs/performance/MULTITHREADING_ANALYSIS.md)
+2. **High traffic (>10 Gbps)**: [docs/performance/WORKER_POOL_EXAMPLE.md](docs/performance/WORKER_POOL_EXAMPLE.md)
+3. **Performance tuning**: [docs/performance/MULTITHREADING_ANALYSIS.md](docs/performance/MULTITHREADING_ANALYSIS.md)
 
 ### I want to build and release
 
 1. **[docs/PUBLISHING.md](docs/PUBLISHING.md)** - Automated publishing workflow
-2. **[docs/CACHIX_SETUP.md](docs/CACHIX_SETUP.md)** - Binary cache setup
-3. **[docs/NIXPKGS_SUBMISSION.md](docs/NIXPKGS_SUBMISSION.md)** - Official nixpkgs submission
 
 ### I want to contribute or develop
 
@@ -139,10 +115,7 @@ BitTorrentBlocker/
 ├── DOCUMENTATION.md              # This file (documentation index)
 │
 └── docs/                         # All documentation
-    ├── NIXOS_DEPLOYMENT.md       # Complete NixOS guide
     ├── PUBLISHING.md             # Package publishing automation
-    ├── CACHIX_SETUP.md           # Nix binary cache
-    ├── NIXPKGS_SUBMISSION.md     # nixpkgs submission guide
     │
     └── performance/              # Performance & optimization guides
         ├── PERFORMANCE.md        # Benchmark results
@@ -157,10 +130,7 @@ BitTorrentBlocker/
 |----------|--------|---------|
 | README.md | ✅ Current | Main entry point, installation, usage |
 | CLAUDE.md | ✅ Current | AI development guide |
-| docs/NIXOS_DEPLOYMENT.md | ✅ Current | Complete NixOS deployment |
 | docs/PUBLISHING.md | ✅ Current | Automated publishing |
-| docs/CACHIX_SETUP.md | ✅ Current | Nix binary cache |
-| docs/NIXPKGS_SUBMISSION.md | ✅ Current | nixpkgs submission |
 | docs/performance/PERFORMANCE.md | ✅ Current | Benchmark results and analysis |
 | docs/performance/MULTITHREADING_ANALYSIS.md | ✅ Current | Concurrency architecture |
 | docs/performance/GO_CONCURRENCY_PATTERNS.md | ✅ Current | Go optimization patterns |

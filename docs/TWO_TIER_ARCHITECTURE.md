@@ -281,24 +281,6 @@ type Config struct {
 }
 ```
 
-### NixOS Module Options
-
-```nix
-services.btblocker = {
-  enable = true;
-  interface = "eth0";
-
-  # Two-tier configuration
-  enableXDP = true;        # Enable XDP fast path (requires kernel 4.18+)
-  xdpMode = "generic";     # generic (compatible) or native (faster)
-  cleanupInterval = 300;   # Cleanup expired IPs every 5 minutes
-
-  # Existing options
-  banDuration = 18000;     # 5 hours
-  logLevel = "info";
-};
-```
-
 ## Testing Strategy
 
 ### Unit Tests
@@ -370,7 +352,6 @@ services.btblocker = {
 - [x] XDP blocklist with expiration
 - [x] Periodic cleanup
 - [x] Integration with DPI Brain
-- [ ] NixOS module updates
 - [ ] Performance benchmarks
 
 ### Medium-term (v2.0)

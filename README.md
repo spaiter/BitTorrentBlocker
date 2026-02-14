@@ -5,8 +5,6 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/spaiter/BitTorrentBlocker)](https://goreportcard.com/report/github.com/spaiter/BitTorrentBlocker)
 [![codecov](https://codecov.io/gh/spaiter/BitTorrentBlocker/branch/main/graph/badge.svg)](https://codecov.io/gh/spaiter/BitTorrentBlocker)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Cachix Cache](https://img.shields.io/badge/cachix-btblocker-blue.svg)](https://btblocker.cachix.org)
-
 A high-performance Go library and CLI tool for detecting and blocking BitTorrent traffic using Deep Packet Inspection (DPI). Designed primarily for **VPS and home servers** that need to prevent BitTorrent usage to comply with local regulations or service provider terms.
 
 **[📚 Complete Documentation Index](DOCUMENTATION.md)** - All documentation organized by topic
@@ -144,119 +142,6 @@ EOF
 docker compose up -d
 ```
 
-### NixOS / Nix (Recommended for NixOS users)
-
-The blocker includes a **complete NixOS module** that handles all configuration automatically. No need to manually configure systemd services or XDP - everything is managed automatically!
-
-#### Quick Start with Flakes
-
-Add BitTorrentBlocker to your system flake and import the module:
-
-```nix
-# ~/my-server/flake.nix (or /etc/nixos/flake.nix)
-{
-  description = "My NixOS Configuration";
-
-  inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    bittorrent-blocker.url = "github:spaiter/BitTorrentBlocker";
-    bittorrent-blocker.inputs.nixpkgs.follows = "nixpkgs";  # Use same nixpkgs
-  };
-
-  outputs = { self, nixpkgs, bittorrent-blocker, ... }: {
-    nixosConfigurations.myhost = nixpkgs.lib.nixosSystem {
-      system = "x86_64-linux";
-      modules = [
-        ./configuration.nix  # Your existing configuration
-
-        # Import the official btblocker module
-        bittorrent-blocker.nixosModules.default
-
-        # Configure btblocker
-        {
-          # IMPORTANT: Apply the overlay HERE in flake.nix to make pkgs.btblocker available
-          # The overlay MUST be in flake.nix where it has access to the bittorrent-blocker input.
-          # Do NOT move this to a separate module file - it will fail with "undefined variable".
-          nixpkgs.overlays = [
-            bittorrent-blocker.overlays.default
-          ];
-
-          services.btblocker = {
-            enable = true;
-            interface = "eth0";  # Single interface
-            # or multiple interfaces: "eth0,wg0,awg0" (comma-separated)
-
-            # NFQUEUE configuration (required for inline DPI)
-            queueNum = 0;                     # NFQUEUE number (0-65535)
-            chains = [ "FORWARD" ];           # iptables chains: INPUT/FORWARD/OUTPUT
-                                              # FORWARD = router/VPN mode (most common)
-                                              # INPUT = local traffic
-                                              # Can use multiple: [ "INPUT" "FORWARD" ]
-
-            # Logging and monitoring
-            logLevel = "info";                # error/warn/info/debug
-            monitorOnly = false;              # Set true to monitor without blocking
-
-            # Optional: performance tuning
-            banDuration = 18000;              # 5 hours (default)
-            xdpMode = "generic";              # XDP mode: "generic" (compatible) or "native" (fast)
-            cleanupInterval = 300;            # XDP cleanup interval in seconds
-          };
-        }
-      ];
-    };
-  };
-}
-```
-
-**Deploy to your system:**
-```bash
-# Update flake inputs to get latest version
-nix flake update bittorrent-blocker
-
-# Rebuild your system
-sudo nixos-rebuild switch --flake .#myhost
-
-# Check service status
-sudo systemctl status btblocker
-
-# View logs
-sudo journalctl -u btblocker -f
-
-# Check banned IPs (XDP map introspection)
-# Note: XDP maps require bpftool or similar for inspection
-sudo bpftool map dump name blocked_ips 2>/dev/null || echo "Install bpftool to view XDP maps"
-```
-
-#### What the Module Does Automatically
-
-- ✅ **Installs btblocker binary** from Cachix (instant, pre-built)
-- ✅ **Configures iptables/nftables** - Automatically adds NFQUEUE rules to redirect traffic for DPI
-- ✅ **Creates systemd service** with CAP_NET_ADMIN and CAP_NET_RAW capabilities
-- ✅ **Loads XDP programs** automatically on service start
-- ✅ **Manages eBPF maps** for IP blocklist with expiration tracking
-- ✅ **Verifies kernel support** - Checks Linux 4.18+ for XDP and NFQUEUE availability
-- ✅ **Handles all environment variables** - QUEUE_NUM, INTERFACE, XDP_MODE, etc.
-- ✅ **Cleans up on stop** - Removes iptables rules, unloads eBPF programs, clears blocklist
-
-**No manual iptables or systemd configuration needed!** The module handles the complete setup.
-
-#### Binary Cache
-
-Pre-built binaries are available at https://btblocker.cachix.org
-
-Nix will prompt to trust the cache on first use. This means instant installation without building from source.
-
-#### Quick Test (Without Installing)
-
-```bash
-# Try it on any Linux with Nix (no installation required)
-nix run github:spaiter/BitTorrentBlocker -- --version
-
-# Install to your user profile (non-NixOS)
-nix profile install github:spaiter/BitTorrentBlocker
-```
-
 ### From Source
 
 ```bash
@@ -296,7 +181,7 @@ sudo INTERFACE=eth0,wg0,awg0 ./bin/btblocker
 # 3. Include interface name in all log messages
 ```
 
-### Manual Setup (Non-NixOS Systems)
+### Manual Setup
 
 The blocker requires iptables rules to redirect traffic to NFQUEUE for inline analysis:
 
@@ -602,179 +487,6 @@ make build
 make run
 ```
 
-## Deployment
-
-### NixOS
-
-The project includes a complete NixOS module for production deployment with automatic setup:
-
-**Using flakes (recommended):**
-
-```nix
-# flake.nix
-{
-  inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    bittorrent-blocker.url = "github:spaiter/BitTorrentBlocker";
-  };
-
-  outputs = { self, nixpkgs, bittorrent-blocker }: {
-    nixosConfigurations.myhost = nixpkgs.lib.nixosSystem {
-      system = "x86_64-linux";
-      modules = [
-        bittorrent-blocker.nixosModules.default
-        {
-          # IMPORTANT: Apply the overlay HERE in flake.nix (btblocker not in nixpkgs yet)
-          # The overlay MUST be in flake.nix where it has access to the bittorrent-blocker input.
-          nixpkgs.overlays = [
-            bittorrent-blocker.overlays.default
-          ];
-
-          services.btblocker = {
-            enable = true;
-            interface = "eth0";                # Single or multiple interfaces (comma-separated: "eth0,wg0,awg0")
-            banDuration = 18000;               # Ban duration in seconds (5 hours)
-            logLevel = "info";                 # Log level: error, warn, info, debug
-            detectionLogPath = "";             # Path to detection log file (empty = disabled)
-            monitorOnly = false;               # If true, only log without banning
-            xdpMode = "generic";               # XDP mode: "generic" (compatible) or "native" (fast)
-            cleanupInterval = 300;             # XDP cleanup interval in seconds (5 minutes)
-            whitelistPorts = [ 22 53 80 443 ]; # Ports to never block
-          };
-        }
-      ];
-    };
-  };
-}
-```
-
-**Using traditional configuration.nix:**
-
-```nix
-# /etc/nixos/configuration.nix
-{ config, pkgs, ... }:
-let
-  bittorrent-blocker = builtins.fetchGit {
-    url = "https://github.com/spaiter/BitTorrentBlocker";
-    ref = "main";
-  };
-in
-{
-  imports = [
-    "${bittorrent-blocker}/nix/module.nix"
-  ];
-
-  # Apply the overlay to make btblocker available
-  nixpkgs.overlays = [
-    (final: prev: {
-      btblocker = (import bittorrent-blocker {
-        system = prev.system;
-      }).packages.${prev.system}.btblocker;
-    })
-  ];
-
-  services.btblocker = {
-    enable = true;
-    interface = "eth0";
-    logLevel = "info";
-  };
-}
-```
-
-**What gets configured automatically:**
-- ✅ Binary installed from Cachix cache (instant installation)
-- ✅ Systemd service with CAP_NET_ADMIN capability
-- ✅ XDP eBPF programs loaded on service start
-- ✅ eBPF maps for IP blocklist management
-- ✅ Automatic service restart on failure
-- ✅ XDP cleanup on service stop
-
-**Configuration Options:**
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enable` | bool | `false` | Enable the btblocker service |
-| `interface` | string | `"eth0"` | Network interface(s) to monitor (comma-separated for multiple: `"eth0,wg0,awg0"`) |
-| `banDuration` | int | `18000` | Ban duration in seconds (default: 5 hours) |
-| `logLevel` | enum | `"info"` | Log level: `error`, `warn`, `info`, `debug` |
-| `detectionLogPath` | string | `""` | Path to detection log file for detailed packet analysis (empty = disabled) |
-| `monitorOnly` | bool | `false` | If true, only log detections without banning IPs (perfect for testing) |
-| `xdpMode` | enum | `"generic"` | XDP mode: `generic` (compatible), `native` (fast), `offload` (NIC hardware) |
-| `cleanupInterval` | int | `300` | XDP cleanup interval in seconds (removes expired bans) |
-| `whitelistPorts` | list | `[22, 53, 80, 443, 853, 5222, 5269]` | Ports to never block |
-
-**XDP Mode Selection:**
-- `generic` (default, recommended) - Software XDP, works on any interface
-- `native` - Driver XDP, requires NIC driver support, highest performance
-- `offload` - Hardware XDP, requires SmartNIC, offloads to NIC hardware
-
-**Examples:**
-
-```nix
-# Example 1: Testing with short ban duration (30 seconds)
-services.btblocker = {
-  enable = true;
-  interface = "awg0";
-  banDuration = 30;
-  logLevel = "debug";
-};
-
-# Example 2: Monitor multiple interfaces simultaneously
-services.btblocker = {
-  enable = true;
-  interface = "eth0,wg0,awg0";  # Comma-separated list
-  logLevel = "info";
-};
-
-# Example 3: High-performance mode with native XDP
-services.btblocker = {
-  enable = true;
-  interface = "eth0";
-  xdpMode = "native";  # Requires NIC driver support
-};
-
-# Example 4: Custom cleanup interval (check every 10 minutes)
-services.btblocker = {
-  enable = true;
-  interface = "wg0";
-  cleanupInterval = 600;  # 10 minutes
-};
-
-# Example 5: Monitor-only mode with detection logging (testing)
-services.btblocker = {
-  enable = true;
-  interface = "eth0";
-  monitorOnly = true;                                    # Only log, don't ban
-  detectionLogPath = "/var/log/btblocker/detections.log";  # Detailed packet logs
-  logLevel = "debug";
-};
-
-# Example 6: Production with detection logging (audit trail)
-services.btblocker = {
-  enable = true;
-  interface = "eth0,wg0";
-  banDuration = 18000;  # 5 hours
-  detectionLogPath = "/var/log/btblocker/detections.log";  # Keep audit trail
-  logLevel = "info";
-};
-```
-
-**After configuration:**
-```bash
-# Rebuild your system
-sudo nixos-rebuild switch
-
-# Check service status
-sudo systemctl status btblocker
-
-# View logs
-sudo journalctl -u btblocker -f
-
-# Check banned IPs (XDP map introspection)
-# Note: XDP maps require bpftool or similar for inspection
-sudo bpftool map dump name blocked_ips 2>/dev/null || echo "Install bpftool to view XDP maps"
-```
-
 ## Detection Accuracy
 
 ### Industry-Leading Performance
@@ -1021,15 +733,19 @@ The BitTorrent Blocker is designed for **production server environments** with e
 **Scenario**: VPN service in Germany must comply with copyright laws.
 
 **Configuration**:
-```bash
-# /etc/nixos/configuration.nix (NixOS)
-services.btblocker = {
-  enable = true;
-  interface = "wg0";              # WireGuard interface
-  banDuration = 18000;            # 5 hours
-  logLevel = "info";
-  xdpMode = "generic";  # XDP mode
-};
+```yaml
+# compose.yml
+services:
+  btblocker:
+    image: ghcr.io/spaiter/btblocker:latest
+    cap_add:
+      - NET_ADMIN
+    network_mode: host
+    environment:
+      - INTERFACE=wg0
+      - BAN_DURATION=18000
+      - LOG_LEVEL=info
+    restart: unless-stopped
 ```
 
 **Result**:
@@ -1062,14 +778,19 @@ DETECTION_LOG=/var/log/btblocker/detections.log \
 **Scenario**: Company enforcing acceptable use policy, no personal torrent downloads.
 
 **Configuration**:
-```nix
-services.btblocker = {
-  enable = true;
-  interface = "eth0";
-  banDuration = 3600;             # 1 hour warning
-  logLevel = "debug";             # Audit trail
-  xdpMode = "generic";  # XDP mode
-};
+```yaml
+# compose.yml
+services:
+  btblocker:
+    image: ghcr.io/spaiter/btblocker:latest
+    cap_add:
+      - NET_ADMIN
+    network_mode: host
+    environment:
+      - INTERFACE=eth0
+      - BAN_DURATION=3600
+      - LOG_LEVEL=debug
+    restart: unless-stopped
 ```
 
 **Result**:
@@ -1113,7 +834,7 @@ For mission-critical environments:
 
 ```bash
 # Server 1: Primary blocker
-services.btblocker.enable = true;
+docker compose up -d
 
 # Server 2: Standby (shared XDP maps via network)
 # Use eBPF map synchronization
@@ -1274,10 +995,7 @@ less /var/log/detections.log
 #### 1. Privilege Separation
 
 ```bash
-# NixOS automatically uses CAP_NET_ADMIN (no full root needed)
-# systemd.services.btblocker.serviceConfig.AmbientCapabilities = [ "CAP_NET_ADMIN" ];
-
-# Manual setup: use capabilities instead of root
+# Use capabilities instead of root
 sudo setcap cap_net_admin=eip /usr/local/bin/btblocker
 # Run as non-root user
 sudo -u btblocker /usr/local/bin/btblocker
@@ -1305,10 +1023,7 @@ chown btblocker:btblocker /var/log/btblocker_detections.log
 #### 3. Firewall Hardening
 
 ```bash
-# XDP programs persist automatically
-# NixOS: Handled automatically by module
-
-# Manual: No persistence needed - XDP programs are loaded on service start
+# No persistence needed - XDP programs are loaded on service start
 # Ban list is managed in eBPF maps with automatic expiry
 ```
 
@@ -1317,7 +1032,6 @@ chown btblocker:btblocker /var/log/btblocker_detections.log
 For detailed documentation on specific topics:
 
 - **Installation**: [README Installation Section](#installation)
-- **NixOS Deployment**: [docs/NIXOS_DEPLOYMENT.md](docs/NIXOS_DEPLOYMENT.md)
 - **Performance Tuning**: [docs/performance/MULTITHREADING_ANALYSIS.md](docs/performance/MULTITHREADING_ANALYSIS.md)
 - **Worker Pool**: [docs/performance/WORKER_POOL_EXAMPLE.md](docs/performance/WORKER_POOL_EXAMPLE.md)
 - **Go Concurrency**: [docs/performance/GO_CONCURRENCY_PATTERNS.md](docs/performance/GO_CONCURRENCY_PATTERNS.md)
