@@ -17,16 +17,10 @@ import (
 func TestNDPIFalsePositives(t *testing.T) {
 	// Protocols to exclude due to known limitations (high false positive rate or technical issues)
 	excludedProtocols := map[string]string{
-		"zoom":                           "Zoom's proprietary protocol occasionally uses UDP packets similar to uTP (<2% packets)",
-		"ipsec":                          "IPSec ESP encrypted packets may contain uTP-like patterns after encryption",
-		"roblox":                         "Roblox gaming protocol has structures very similar to uTP (43% FP rate)",
-		"nfsv2":                          "NFS version 2 pcap file uses unsupported format (Unknown minor version 1)",
-		"nfsv3":                          "NFS version 3 pcap file uses unsupported format (Unknown minor version 1)",
-		"fuzz-2021-10-13":                "Pcap file uses unsupported format (Unknown minor version 0)",
-		"lru_ipv6_caches":                "IPv6 cache protocol has DHT-like patterns (25 FPs)",
-		"quic046":                        "QUIC v0.46 protocol has uTP-like patterns (9 FPs)",
-		"rx":                             "AFS RX protocol has DHT-like patterns (20 FPs)",
-		"targusdataspeed_false_positive": "Targus DataSpeed appears to have legitimate DHT traffic (4 FPs)",
+		"nfsv2":           "NFS version 2 pcap file uses unsupported format (Unknown minor version 1)",
+		"nfsv3":           "NFS version 3 pcap file uses unsupported format (Unknown minor version 1)",
+		"fuzz-2021-10-13": "Pcap file uses unsupported format (Unknown minor version 0)",
+		"lru_ipv6_caches": "IPv6 cache protocol contains actual BitTorrent DHT traffic on port 6881 (18 FPs)",
 	}
 
 	// Helper function to check if a file should be excluded
@@ -198,14 +192,9 @@ func TestNDPIFalsePositives(t *testing.T) {
 func TestNDPIFalsePositiveRate(t *testing.T) {
 	// Protocols to exclude (same as in TestNDPIFalsePositives)
 	excludedProtocols := map[string]bool{
-		"zoom":   true,
-		"ipsec":  true,
-		"roblox": true,
-		"nfsv2":  true, "nfsv3": true,
+		"nfsv2": true, "nfsv3": true,
 		"fuzz-2021-10-13": true,
-		"lru_ipv6_caches": true, "quic046": true,
-		"rx":                             true,
-		"targusdataspeed_false_positive": true,
+		"lru_ipv6_caches": true,
 	}
 
 	// Helper function to check if a file should be excluded
