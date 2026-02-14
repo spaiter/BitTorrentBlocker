@@ -6,6 +6,10 @@ import (
 	"math"
 )
 
+// maxUTPWindowSize is the maximum realistic uTP window size (100MB).
+// Real BitTorrent uTP typically uses 1-10MB; values above this indicate non-uTP traffic.
+const maxUTPWindowSize = 100 * 1024 * 1024
+
 // CheckSignatures searches for BitTorrent signature patterns in payload
 func CheckSignatures(payload []byte) bool {
 	// OPTIMIZATION: Fast-path for most common signatures (early exit)
@@ -26,16 +30,8 @@ func CheckSignatures(payload []byte) bool {
 		}
 	}
 
-	// 3. Check remaining signatures
-	for _, sig := range BTSignatures {
-		// Skip signatures already checked above
-		if len(sig) == 19 && sig[0] == 'B' { // "BitTorrent protocol"
-			continue
-		}
-		if len(sig) == 13 && sig[0] == 'd' && sig[1] == '1' { // DHT patterns
-			continue
-		}
-
+	// 3. Check remaining signatures (skip indices 0 and 1, already checked above as fast-path)
+	for _, sig := range BTSignatures[2:] {
 		// Length pre-filter: skip signatures longer than payload
 		if len(sig) > len(payload) {
 			continue
@@ -91,6 +87,19 @@ func CheckSOCKSConnection(payload []byte) bool {
 		return true
 	}
 	return false
+}
+
+// countTrailingZeroBytes counts trailing zero bytes in a byte slice.
+func countTrailingZeroBytes(data []byte) int {
+	count := 0
+	for i := len(data) - 1; i >= 0; i-- {
+		if data[i] == 0 {
+			count++
+		} else {
+			break
+		}
+	}
+	return count
 }
 
 // CheckUDPTrackerDeep validates UDP tracker packet structure (Connect/Announce/Scrape)
@@ -205,18 +214,7 @@ func CheckUDPTrackerDeep(packet []byte) bool {
 			// CRITICAL: Reject connection IDs with too many trailing zero bytes
 			// Real UDP tracker connection IDs are pseudo-random 64-bit values
 			// Gaming protocols (GeForce Now, etc.) often have patterns like 0x90XX000000000000
-			// Count trailing zero bytes in connection ID
-			connIDBytes := packet[:8]
-			trailingZeroBytes := 0
-			for i := 7; i >= 0; i-- {
-				if connIDBytes[i] == 0 {
-					trailingZeroBytes++
-				} else {
-					break
-				}
-			}
-			// Reject if more than 3 trailing zero bytes (real connection IDs are random)
-			if trailingZeroBytes > 3 {
+			if countTrailingZeroBytes(packet[:8]) > 3 {
 				return false // Connection ID has too many trailing zeros, not BitTorrent
 			}
 
@@ -242,6 +240,9 @@ func CheckUDPTrackerDeep(packet []byte) bool {
 				if b != 0xFF {
 					allFF = false
 				}
+				if !allZero && !allFF {
+					break
+				}
 			}
 			if allZero || allFF {
 				return false // Invalid info_hash
@@ -250,17 +251,7 @@ func CheckUDPTrackerDeep(packet []byte) bool {
 			// Additional validation: Check full peer ID (20 bytes at offset 36-55)
 			// Real BitTorrent peer IDs should not have excessive trailing zeros
 			// Gaming protocols and other false positives often have many trailing zeros
-			fullPeerID := packet[36:56]
-			trailingZeros := 0
-			for i := len(fullPeerID) - 1; i >= 0; i-- {
-				if fullPeerID[i] == 0 {
-					trailingZeros++
-				} else {
-					break
-				}
-			}
-			// Reject if more than 3 trailing zeros (real peer IDs are random/structured)
-			if trailingZeros > 3 {
+			if countTrailingZeroBytes(packet[36:56]) > 3 {
 				return false // Too many trailing zeros, likely not BitTorrent
 			}
 
@@ -283,17 +274,7 @@ func CheckUDPTrackerDeep(packet []byte) bool {
 
 			// CRITICAL: Reject connection IDs with too many trailing zero bytes
 			// Gaming protocols (GeForce Now, etc.) have patterns like 0x90XX000000000000
-			connIDBytes := packet[:8]
-			trailingZeroBytes := 0
-			for i := 7; i >= 0; i-- {
-				if connIDBytes[i] == 0 {
-					trailingZeroBytes++
-				} else {
-					break
-				}
-			}
-			// Reject if more than 3 trailing zero bytes
-			if trailingZeroBytes > 3 {
+			if countTrailingZeroBytes(packet[:8]) > 3 {
 				return false // Connection ID has too many trailing zeros, not BitTorrent
 			}
 
@@ -395,8 +376,7 @@ func CheckUTPRobust(packet []byte) bool {
 	// uTP window size is in bytes, typically 1-10 MB for BitTorrent
 	// VoIP protocols (Zoom, etc.) often have values > 1 billion (garbage data)
 	// Real maximum: 100MB is generous upper bound (most use 1-10MB)
-	maxWindowSize := uint32(100 * 1024 * 1024) // 100MB
-	if windowSize > maxWindowSize {
+	if windowSize > maxUTPWindowSize {
 		return false // Unrealistically large window size, not uTP
 	}
 
@@ -570,10 +550,10 @@ func CheckBencodeDHT(payload []byte) bool {
 	}
 
 	// Must contain query/response/error type
-	hasType := bytes.Contains(payload, []byte("1:y1:q")) ||
-		bytes.Contains(payload, []byte("1:y1:r")) ||
-		bytes.Contains(payload, []byte("1:y1:e"))
-	if !hasType {
+	hasQuery := bytes.Contains(payload, []byte("1:y1:q"))
+	hasResponse := bytes.Contains(payload, []byte("1:y1:r"))
+	hasError := bytes.Contains(payload, []byte("1:y1:e"))
+	if !hasQuery && !hasResponse && !hasError {
 		return false
 	}
 
@@ -588,15 +568,15 @@ func CheckBencodeDHT(payload []byte) bool {
 	// Check for transaction ID AND (DHT method OR DHT-specific fields)
 	if bytes.Contains(payload, []byte("1:t")) {
 		// If it's a query, require a valid DHT method
-		if bytes.Contains(payload, []byte("1:y1:q")) {
+		if hasQuery {
 			return hasDHTMethod
 		}
 		// For responses/errors, also check for DHT-specific fields
+		// CheckDHTNodes already scans for "6:nodes" internally, so no separate check needed
 		return hasDHTMethod ||
 			CheckDHTNodes(payload) ||
 			bytes.Contains(payload, []byte("6:values")) ||
-			bytes.Contains(payload, []byte("5:token")) ||
-			bytes.Contains(payload, []byte("6:nodes"))
+			bytes.Contains(payload, []byte("5:token"))
 	}
 
 	// Check for DHT node validation
@@ -612,7 +592,7 @@ func ShannonEntropy(data []byte) float64 {
 	if len(data) == 0 {
 		return 0
 	}
-	freq := make([]int, 256)
+	var freq [256]int
 	for _, b := range data {
 		freq[b]++
 	}
@@ -663,19 +643,17 @@ func CheckMSEEncryption(payload []byte) bool {
 
 	hasVC := false
 	vcPosition := -1
-	for i := 96; i <= searchEnd-8 && i < len(payload)-8; i++ {
-		// Check for VC (8 consecutive zero bytes)
-		isVC := true
-		for j := 0; j < 8; j++ {
-			if payload[i+j] != 0x00 {
-				isVC = false
+	zeroRun := 0
+	for i := 96; i < searchEnd; i++ {
+		if payload[i] == 0 {
+			zeroRun++
+			if zeroRun == 8 {
+				hasVC = true
+				vcPosition = i - 7
 				break
 			}
-		}
-		if isVC {
-			hasVC = true
-			vcPosition = i
-			break
+		} else {
+			zeroRun = 0
 		}
 	}
 
@@ -976,12 +954,16 @@ func CheckBitTorrentMessage(payload []byte) bool {
 			sample := payload[5:21] // Skip msgID, sample 16 bytes
 
 			// Count unique byte values and repeated bytes
-			uniqueBytes := make(map[byte]bool)
+			var seen [256]bool
+			uniqueCount := 0
 			repeatedCount := 0
 			prevByte := sample[0]
 
 			for _, b := range sample {
-				uniqueBytes[b] = true
+				if !seen[b] {
+					seen[b] = true
+					uniqueCount++
+				}
 				if b == prevByte {
 					repeatedCount++
 				}
@@ -991,7 +973,7 @@ func CheckBitTorrentMessage(payload []byte) bool {
 			// BitTorrent bitfield: typically has many repeated bytes (0x00 or 0xFF runs)
 			// SSH encrypted: typically has high unique byte count, few repeats
 			// If we see >12 unique bytes out of 16 AND few repeats, likely encrypted SSH
-			if len(uniqueBytes) >= 13 && repeatedCount <= 4 {
+			if uniqueCount >= 13 && repeatedCount <= 4 {
 				return false // Likely encrypted SSH, not BitTorrent bitmap
 			}
 		}
