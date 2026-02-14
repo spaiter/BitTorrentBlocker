@@ -165,7 +165,7 @@ func (b *Blocker) processNFQPacket(attr nfqueue.Attribute) int {
 	}
 
 	// Extract packet information
-	var srcIP, dstIP string
+	var srcIP, dstIP net.IP
 	var srcPort, dstPort uint16
 	var appLayer []byte
 	isUDP := false
@@ -173,8 +173,8 @@ func (b *Blocker) processNFQPacket(attr nfqueue.Attribute) int {
 	// Parse IP layer
 	if ipLayer := packet.Layer(layers.LayerTypeIPv4); ipLayer != nil {
 		ip, _ := ipLayer.(*layers.IPv4)
-		srcIP = ip.SrcIP.String()
-		dstIP = ip.DstIP.String()
+		srcIP = ip.SrcIP
+		dstIP = ip.DstIP
 	} else {
 		// Not IPv4, accept by default
 		b.setVerdict(packetID, verdict)
@@ -231,14 +231,11 @@ func (b *Blocker) processNFQPacket(attr nfqueue.Attribute) int {
 
 			// Add to XDP blocklist for fast-path blocking of future packets
 			if b.xdpFilter != nil {
-				ip := net.ParseIP(srcIP)
-				if ip != nil {
-					banDuration := time.Duration(b.config.BanDuration) * time.Second
-					if err := b.xdpFilter.GetMapManager().AddIP(ip, banDuration); err != nil {
-						b.logger.Error("Failed to add IP %s to XDP blocklist: %v", srcIP, err)
-					} else {
-						b.logger.Debug("Added IP %s to XDP fast-path (expires in %v)", srcIP, banDuration)
-					}
+				banDuration := time.Duration(b.config.BanDuration) * time.Second
+				if err := b.xdpFilter.GetMapManager().AddIP(srcIP, banDuration); err != nil {
+					b.logger.Error("Failed to add IP %s to XDP blocklist: %v", srcIP, err)
+				} else {
+					b.logger.Debug("Added IP %s to XDP fast-path (expires in %v)", srcIP, banDuration)
 				}
 			}
 		}
@@ -248,9 +245,9 @@ func (b *Blocker) processNFQPacket(attr nfqueue.Attribute) int {
 			time.Now(),
 			fmt.Sprintf("nfq%d", b.config.QueueNum),
 			proto,
-			srcIP,
+			srcIP.String(),
 			srcPort,
-			dstIP,
+			dstIP.String(),
 			dstPort,
 			result.Reason,
 			appLayer,

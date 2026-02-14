@@ -1,6 +1,7 @@
 package blocker
 
 import (
+	"net"
 	"testing"
 )
 
@@ -818,70 +819,70 @@ func TestCheckLSD(t *testing.T) {
 	tests := []struct {
 		name     string
 		payload  []byte
-		destIP   string
+		destIP   net.IP
 		destPort uint16
 		expected bool
 	}{
 		{
 			name:     "LSD to IPv4 multicast address",
 			payload:  []byte("BT-SEARCH * HTTP/1.1\r\nHost: 239.192.152.143:6771\r\n"),
-			destIP:   "239.192.152.143",
+			destIP:   net.IP{239, 192, 152, 143},
 			destPort: 6771,
 			expected: true,
 		},
 		{
 			name:     "LSD to IPv6 multicast address",
 			payload:  []byte("BT-SEARCH * HTTP/1.1\r\n"),
-			destIP:   "ff15::efc0:988f",
+			destIP:   net.ParseIP("ff15::efc0:988f"),
 			destPort: 6771,
 			expected: true,
 		},
 		{
 			name:     "LSD with BT-SEARCH signature",
 			payload:  []byte("BT-SEARCH * HTTP/1.1\r\nHost: 239.192.152.143:6771\r\nInfohash: 0123456789ABCDEF0123456789ABCDEF01234567\r\nPort: 6881\r\n"),
-			destIP:   "10.0.0.1",
+			destIP:   net.IP{10, 0, 0, 1},
 			destPort: 12345,
 			expected: true,
 		},
 		{
 			name:     "LSD with Host header",
 			payload:  []byte("Host: 239.192.152.143:6771\r\nInfohash: ABCD\r\n"),
-			destIP:   "192.168.1.1",
+			destIP:   net.IP{192, 168, 1, 1},
 			destPort: 8080,
 			expected: true,
 		},
 		{
 			name:     "LSD with Infohash and Port",
 			payload:  []byte("Infohash: 0123456789ABCDEF0123456789ABCDEF01234567\r\nPort: 6881\r\n"),
-			destIP:   "10.0.0.1",
+			destIP:   net.IP{10, 0, 0, 1},
 			destPort: 9999,
 			expected: true,
 		},
 		{
 			name:     "Wrong port on multicast IP",
 			payload:  []byte("Some data"),
-			destIP:   "239.192.152.143",
+			destIP:   net.IP{239, 192, 152, 143},
 			destPort: 8080,
 			expected: false,
 		},
 		{
 			name:     "Wrong IP on correct port",
 			payload:  []byte("Some data"),
-			destIP:   "192.168.1.1",
+			destIP:   net.IP{192, 168, 1, 1},
 			destPort: 6771,
 			expected: false,
 		},
 		{
 			name:     "Normal HTTP traffic",
 			payload:  []byte("GET / HTTP/1.1\r\nHost: example.com\r\n"),
-			destIP:   "93.184.216.34",
+			destIP:   net.IP{93, 184, 216, 34},
 			destPort: 80,
 			expected: false,
 		},
 		{
 			name:     "Has Infohash but no Port",
 			payload:  []byte("Infohash: ABCD1234\r\n"),
-			destIP:   "10.0.0.1",
+			destIP:   net.IP{10, 0, 0, 1},
 			destPort: 9999,
 			expected: false,
 		},
@@ -1095,9 +1096,10 @@ func BenchmarkCheckMSEEncryption(b *testing.B) {
 
 func BenchmarkCheckLSD(b *testing.B) {
 	payload := []byte("BT-SEARCH * HTTP/1.1\r\nHost: 239.192.152.143:6771\r\nInfohash: ABCD\r\nPort: 6881\r\n")
+	destIP := net.IP{239, 192, 152, 143}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		CheckLSD(payload, "239.192.152.143", 6771)
+		CheckLSD(payload, destIP, 6771)
 	}
 }
 

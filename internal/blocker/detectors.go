@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"math"
+	"net"
 )
 
 // maxUTPWindowSize is the maximum realistic uTP window size (100MB).
@@ -609,6 +610,13 @@ func ShannonEntropy(data []byte) float64 {
 
 // CheckMSEEncryption detects Message Stream Encryption (MSE/PE) handshake
 // This is critical for detecting encrypted BitTorrent traffic
+//
+// Structured with sequential early exits to minimize work for non-BT traffic:
+//
+//	Phase 1: distinct-byte pre-check  (~100ns) → reject most non-BT traffic
+//	Phase 2: ShannonEntropy           (~300ns) → reject remaining non-DH data
+//	Phase 3: VC scan                  (~500ns) → only runs on high-entropy data
+//	Phase 4: crypto field check       (O(1))   → only runs if VC found
 func CheckMSEEncryption(payload []byte) bool {
 	// MSE handshake structure:
 	// 1. 96-byte DH public key
@@ -622,18 +630,30 @@ func CheckMSEEncryption(payload []byte) bool {
 		return false
 	}
 
-	// Check if first 96 bytes have high entropy (DH public key characteristic)
-	hasHighEntropyKey := false
-	if len(payload) >= 96 {
-		entropy := ShannonEntropy(payload[0:96])
-		// DH public keys should have high entropy (> 6.5)
-		// Increased from 6.0 to 6.5 to reduce false positives
-		// Typical values: DH keys ≈ 6.5-7.0, random protocols ≈ 6.0-6.3, structured data < 5.0
-		if entropy > 6.5 {
-			hasHighEntropyKey = true
+	// Phase 1: Distinct-byte pre-check (~100ns)
+	// For 96 samples, max entropy with d distinct values:
+	//   H(d=91) = 6.481 < 6.5, H(d=92) = 6.502 > 6.5
+	// So distinct < 92 guarantees entropy cannot exceed 6.5.
+	var seen [256]bool
+	distinct := 0
+	for _, b := range payload[:96] {
+		if !seen[b] {
+			seen[b] = true
+			distinct++
 		}
 	}
+	if distinct < 92 {
+		return false
+	}
 
+	// Phase 2: Shannon entropy check (~300ns)
+	// DH public keys should have high entropy (> 6.5)
+	// Typical values: DH keys ≈ 6.5-7.0, random protocols ≈ 6.0-6.3, structured data < 5.0
+	if ShannonEntropy(payload[0:96]) <= 6.5 {
+		return false
+	}
+
+	// Phase 3: VC scan (~500ns) — only runs on high-entropy data
 	// Look for Verification Constant (8 consecutive zero bytes)
 	// Search window: bytes 96-628 (96 + max padding 512 + 20)
 	searchEnd := 628
@@ -641,14 +661,12 @@ func CheckMSEEncryption(payload []byte) bool {
 		searchEnd = len(payload)
 	}
 
-	hasVC := false
 	vcPosition := -1
 	zeroRun := 0
 	for i := 96; i < searchEnd; i++ {
 		if payload[i] == 0 {
 			zeroRun++
 			if zeroRun == 8 {
-				hasVC = true
 				vcPosition = i - 7
 				break
 			}
@@ -656,33 +674,30 @@ func CheckMSEEncryption(payload []byte) bool {
 			zeroRun = 0
 		}
 	}
-
-	// Additional validation: check crypto_provide/select field after VC
-	// This field should be 4 bytes after VC and have specific values
-	hasCryptoField := false
-	if hasVC && vcPosition >= 0 && len(payload) >= vcPosition+12 {
-		// crypto_provide/select is 4 bytes after VC
-		// Valid values: 0x00000001 (plaintext), 0x00000002 (RC4)
-		cryptoBytes := binary.BigEndian.Uint32(payload[vcPosition+8 : vcPosition+12])
-		// Check if it's a valid crypto field (bits 1 or 2 set, not all zeros or all ones)
-		if cryptoBytes > 0 && cryptoBytes <= 0x03 {
-			hasCryptoField = true
-		}
+	if vcPosition < 0 {
+		return false
 	}
 
-	// Require ALL THREE conditions to minimize false positives:
-	// 1. High entropy DH key (> 6.5)
-	// 2. VC marker (8 zero bytes)
-	// 3. Valid crypto_provide/select field
-	return hasHighEntropyKey && hasVC && hasCryptoField
+	// Phase 4: crypto field check (O(1)) — only runs if VC found
+	// crypto_provide/select is 4 bytes after VC
+	// Valid values: 0x00000001 (plaintext), 0x00000002 (RC4)
+	if len(payload) < vcPosition+12 {
+		return false
+	}
+	cryptoBytes := binary.BigEndian.Uint32(payload[vcPosition+8 : vcPosition+12])
+	return cryptoBytes > 0 && cryptoBytes <= 0x03
 }
+
+// Precomputed LSD multicast addresses to avoid allocations in CheckLSD.
+var lsdMulticastIPv4 = net.IP{239, 192, 152, 143}
+var lsdMulticastIPv6 = net.ParseIP("ff15::efc0:988f")
 
 // CheckLSD detects Local Service Discovery (LSD) traffic
 // LSD uses multicast to discover peers on the local network
-func CheckLSD(payload []byte, destIP string, destPort uint16) bool {
+func CheckLSD(payload []byte, destIP net.IP, destPort uint16) bool {
 	// Check if destined to LSD multicast address and port
 	if destPort == 6771 {
-		if destIP == "239.192.152.143" || destIP == "ff15::efc0:988f" {
+		if destIP.Equal(lsdMulticastIPv4) || destIP.Equal(lsdMulticastIPv6) {
 			return true
 		}
 	}

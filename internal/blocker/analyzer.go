@@ -1,5 +1,7 @@
 package blocker
 
+import "net"
+
 // AnalysisResult contains the result of packet analysis
 type AnalysisResult struct {
 	ShouldBlock bool
@@ -21,12 +23,12 @@ func NewAnalyzer(config Config) *Analyzer {
 // AnalyzePacket performs comprehensive DPI analysis on a packet
 // Returns whether the packet should be blocked and the reason
 func (a *Analyzer) AnalyzePacket(payload []byte, isUDP bool) AnalysisResult {
-	return a.AnalyzePacketEx(payload, isUDP, "", 0)
+	return a.AnalyzePacketEx(payload, isUDP, nil, 0)
 }
 
 // AnalyzePacketEx performs comprehensive DPI analysis with destination info
 // destIP and destPort are used for LSD detection
-func (a *Analyzer) AnalyzePacketEx(payload []byte, isUDP bool, destIP string, destPort uint16) AnalysisResult {
+func (a *Analyzer) AnalyzePacketEx(payload []byte, isUDP bool, destIP net.IP, destPort uint16) AnalysisResult {
 	if len(payload) == 0 {
 		return AnalysisResult{ShouldBlock: false}
 	}
@@ -53,7 +55,7 @@ func (a *Analyzer) AnalyzePacketEx(payload []byte, isUDP bool, destIP string, de
 	if isUDP {
 		// === UDP FAST PATH ===
 		// 1. LSD Detection (1.13 ns/op) - very fast and specific
-		if destIP != "" && CheckLSD(processingPayload, destIP, destPort) {
+		if destIP != nil && CheckLSD(processingPayload, destIP, destPort) {
 			return AnalysisResult{
 				ShouldBlock: true,
 				Reason:      "Local Service Discovery (BEP 14)",

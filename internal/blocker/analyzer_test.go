@@ -1,6 +1,7 @@
 package blocker
 
 import (
+	"net"
 	"testing"
 )
 
@@ -212,7 +213,7 @@ func TestAnalyzer_AnalyzePacketEx_LSD(t *testing.T) {
 	lsdPayload := []byte("BT-SEARCH * HTTP/1.1\r\nHost: 239.192.152.143:6771\r\nInfohash: ABCD\r\nPort: 6881\r\n\r\n")
 
 	// Test with correct LSD multicast address
-	result := analyzer.AnalyzePacketEx(lsdPayload, true, "239.192.152.143", 6771)
+	result := analyzer.AnalyzePacketEx(lsdPayload, true, net.IP{239, 192, 152, 143}, 6771)
 	if !result.ShouldBlock {
 		t.Errorf("AnalyzePacketEx() should detect LSD traffic")
 	}
@@ -221,7 +222,7 @@ func TestAnalyzer_AnalyzePacketEx_LSD(t *testing.T) {
 	}
 
 	// Test without destination info (should not trigger LSD detection)
-	result2 := analyzer.AnalyzePacketEx(lsdPayload, true, "", 0)
+	result2 := analyzer.AnalyzePacketEx(lsdPayload, true, nil, 0)
 	// Should still be detected via signature
 	if !result2.ShouldBlock {
 		t.Errorf("AnalyzePacketEx() should still detect via signatures")
