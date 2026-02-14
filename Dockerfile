@@ -48,7 +48,6 @@ RUN addgroup -g 1000 btblocker && \
 # docker run --cap-add=NET_ADMIN --network=host ...
 
 ENTRYPOINT ["/usr/local/bin/btblocker"]
-CMD ["--help"]
 
 # Metadata
 LABEL org.opencontainers.image.title="BitTorrent Blocker"
